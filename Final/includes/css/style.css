@@ -1,0 +1,215 @@
+:root {
+    --black: #1E1E1E;
+    --white: #F3F3F3;
+    --grey: #CACACA;
+    --darkGrey : #b1b1b1;
+    --green: #69B578;
+    --blue: #009FB7;
+    --purple: #8D6A9F;
+    --red: #E05263;
+    --yellow: #F3B61F;
+}
+
+body {
+    font-family: 'Inter', sans-serif !important;
+    -ms-overflow-style: none;  /* IE and Edge */ /* hide scrollbar */
+    scrollbar-width: none;  /* Firefox */
+}
+
+body::-webkit-scrollbar {
+    display: none; /* hide scrollbar */
+}
+
+section#landing {
+    height: 100vh;
+    position: relative;
+}
+
+.card {
+    box-shadow: 9px 12px 10px 5px rgba(0,0,0,0.6);
+    background-color: var(--white)!important;
+}
+.navbar {
+    backdrop-filter: blur(8px);
+}
+
+.textShadow {
+    text-shadow: 2px 2px 2.5px var(--black);
+}
+
+.nav-link {
+    color: var(--black)!important;
+}
+
+.navbarLinks {
+    text-shadow: 2.5px 2.5px 1.5px var(--black);
+    color: var(--white)!important;
+}
+
+.nav-pills .nav-link.active {
+    background-color: var(--black)!important;
+    color: var(--white)!important;
+}
+
+#cartBtn {
+    background-color: var(--black)!important;
+    color: var(--white)!important;
+}
+
+#checkoutBtn {
+    background-color: var(--green)!important;
+    color: var(--white)!important;
+    border-color: var(--black)!important;
+}
+
+#continueBtn{
+    background-color: var(--blue)!important;
+    color: var(--white)!important;
+}
+
+#clearCartBtn {
+    background-color: var(--red)!important;
+    color: var(--white)!important;
+    border-color: var(--black)!important;
+}
+#backBtn {
+    background-color: var(--red)!important;
+    color: var(--white)!important;
+}
+.addToCart {
+    background-color: var(--black)!important;
+    color: var(--white)!important;
+    border-color: var(--white)!important;
+}
+
+#landingContainer {
+    position: relative;
+    z-index: 1;
+    transform: translate(-50%, -50%);
+    top: 50%;
+    left: 50%;
+}
+
+#landingBackground {
+    background-image: url(../images/hero.jpg);
+    max-width: 100%;
+    height: 100%;
+    position: fixed;
+    filter: blur(8px);
+    z-index: -1;
+    top: 0;
+    left: 0;
+}
+
+
+
+#landingContent {
+    position: absolute;
+    text-align: center;
+    border: 1px solid rgb(255,255,255,0.6); /* didn't like my variables */
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.22);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    width: 80%;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+}
+
+#cartCount {
+    top: 5px!important;
+}
+
+/* Styling card images */
+.card-img-top {
+    width: 100%;
+    height: 25vw;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+}
+
+section#featured {
+    min-height: 100vh;
+    background-color: var(--grey);
+}
+
+section#new {
+    min-height: 100vh;
+    background-color: var(--darkGrey);
+}
+
+section#mens {
+    min-height: 100vh;
+    background-color: var(--grey);
+}
+
+section#womens {
+    min-height: 100vh;
+    background-color: var(--darkGrey);
+}
+
+section#accessories {
+    min-height: 100vh;
+    background-color: var(--grey);
+}
+
+section#electronics {
+    min-height: 100vh;
+    background-color: var(--darkGrey);
+}
+
+#addySuggestions {
+    position: absolute;
+    width: 100%;
+    z-index: 64;
+    background-color: red;
+}
+
+.suggestion {
+    padding: 5px;
+    cursor: pointer;
+}
+
+/* Styles for the item popup */
+#cartItemPopup {
+    display: none;
+    position: fixed;
+    max-width: 30%;
+    text-align: center;
+    bottom: 20px;
+    right: 20px;
+    background-color: var(--white);
+    border: 1px solid var(--black);
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    z-index: 9999;
+}
+
+#cartItemPopupImage {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 5px;
+    margin-right: 10px;
+}
+
+#cartItemPopupTitle {
+    margin: 0;
+    font-size: 16px;
+}
+
+#cartItemPopupQty {
+    margin: 0;
+    font-size: 14px;
+    color: var(--purple);
+}
+
+
+@media (max-width: 768px) {
+    .cart-item-popup {
+        max-width: 60%;
+    }
+}
