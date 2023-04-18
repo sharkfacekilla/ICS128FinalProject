@@ -1,7 +1,9 @@
+//script purely for handling the validation of the checkout field... felt like putting it on it's own was a smart thing to do since it's big
+//regex
 const regFirstName = /^[a-zA-Z]+$/;
 const regLastName = /^[a-zA-Z-]+$/;
 const regAddress = /^(\d+)\s+([\w\s]+?)\s+(?:(?:(?:Avenue|Ave|Street|St|Road|Rd|Lane|Ln|Drive|Dr|Boulevard|Blvd|Court|Ct|Place|Pl|Square|Sq|Terrace|Ter|Trail|Trl|Highway|Hwy)\b)|([\w\s]+))$/i;
-const regSecondAddress = /(?:\b(?:2nd|Second|Basement|Suite|Apt|Apartment|Unit|Room|Studio)\b)\s*([\w\s]+)/i;
+const regSecondAddress = /(?:\b(?:2nd|Second|Basement|Suite|Apt|Apartment|Unit|Room|Studio)\b)\s*([\w\s]+)/i; //for optional field
 const regCity =  /^[a-zA-Z]+(?:\s[a-zA-Z]+)*$/;
 const regEmail = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
 const canRegPostal = /^[ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z][ -]?\d[ABCEGHJ-NPRSTV-Z]\d$/i;
@@ -10,9 +12,9 @@ const regPhone = /^(\d{3}[- ]?\d{3}[- ]?\d{4}|\(\d{3}\)\s*\d{3}[- ]?\d{4}|\d{3}[
 const cvcRegex = /^\d{3}$/; 
 const ccRegex = /^(\d{4}\s\d{4}\s\d{4}\s\d{4}|\d{16})$/;
 const monthRegex = /^(0[1-9]|1[0-2]|10|11|12)$/;
-const currentYear = new Date().getFullYear();
-const currentMonth = new Date().getMonth() + 1;
 const yearRegex = /^(?:20)\d\d$/;
+const currentYear = new Date().getFullYear(); //get current date for credit card validaton later
+const currentMonth = new Date().getMonth() + 1;
 
 let billingFirstName;
 let billingLastName;
@@ -44,13 +46,13 @@ let isBillingFormValid = false;
 let isShippingFormValid = false;
 let isCreditCardFormValid = false;
 
-// validation of the billing form
+
 $(document).ready(function() {
     $(`#submitOrderBtn`).hide(); //initially hiding these buttons
     $(`#backBtn`).hide();
     $(`#submitOrderError`).hide();
     
-    //functions to validate fields on submit button click
+    //functions to validate fields on submit order button click
     function billingValidate() {
         //getting values from inputs
         billingFirstName = $(`#billingFirstName`).val();
@@ -63,7 +65,8 @@ $(document).ready(function() {
         billingPhone = $(`#billingPhone`).val();
         billingEmail = $(`#billingEmail`).val();
 
-        //going through and checking if fields are either empty, or match the regex.
+        //going through and checking if fields are either empty, or match the regex, and display feedback appropriately
+        //first name
         if (billingFirstName === ``) {
             $(`#billingFirstName`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#billingFirstName`).siblings(`.invalid-feedback`).text(`Please enter your first name`);
@@ -78,6 +81,7 @@ $(document).ready(function() {
             isBillingFormValid = false;
         }
 
+        //last name
         if (billingLastName === ``) {
             $(`#billingLastName`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#billingLastName`).siblings(`.invalid-feedback`).text(`Please enter your last name`);
@@ -92,6 +96,7 @@ $(document).ready(function() {
             isBillingFormValid = false;
         }
 
+        //address
         if (billingAddress === ``) {
             $(`#billingAddress`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#billingAddress`).siblings(`.invalid-feedback`).text(`Please enter your address`);
@@ -103,28 +108,48 @@ $(document).ready(function() {
         }
         else {
             $(`#billingAddress`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            isBillingFormValid = false;
         }
 
+        //country
         if (billingCountry === null) {
             $(`#billingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#billingCountry`).siblings(`.invalid-feedback`).text(`Please select a country`);
             isBillingFormValid = false;
         }
         else {
-            $(`#billingCountry`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
+            if (billingCountry === `CAD` && billingPostalCode.match(canRegPostal)) {
+                $(`#billingCountry`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+                isBillingFormValid = true;
+            }
+            else {
+                $(`#billingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
+                $(`#billingCountry`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
+                $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#billingZip`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
+                isBillingFormValid = false;
+            }
         }
 
+        //province/state
         if (billingProvince === null) {
-            $(`#billingProvince`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(`#billingProvince`).siblings(`.invalid-feedback`).text(`Please select a province`);
-            isBillingFormValid = false;
+            if (billingCountry === `CAD`) {
+                $(`#billingProvince`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
+                $(`#billingProvince`).siblings(`.invalid-feedback`).text(`Please select a province`);
+                isBillingFormValid = false;
+            }
+            else {
+                $(`#billingProvince`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
+                $(`#billingProvince`).siblings(`.invalid-feedback`).text(`Please select a state`);
+                isBillingFormValid = false;
+            }
         }
         else {
             $(`#billingProvince`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
             isBillingFormValid = true;
         }
 
+        //city
         if (billingCity === ``) {
             $(`#billingCity`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#billingCity`).siblings(`.invalid-feedback`).text(`Please enter your city`);
@@ -139,20 +164,27 @@ $(document).ready(function() {
             isBillingFormValid = false;
         }
 
+        //postal/zip
         if (billingPostalCode === ``) {
             $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#billingZip`).siblings(`.invalid-feedback`).text(`Please enter your postal code`);
             isBillingFormValid = false;
         }
-        else if (billingPostalCode.match(canRegPostal) || billingPostalCode.match(usaRegPostal)) {
-            $(`#billingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
-        }
-        else {
-            $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            isBillingFormValid = false;
-        }
+        else 
+            if (billingCountry === `CAD` && billingPostalCode.match(canRegPostal)){
+                $(`#billingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+                isBillingFormValid = true;
+            }
+            else if (billingCountry === `USA` && billingPostalCode.match(usaRegPostal)) {
+                $(`#billingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+                isBillingFormValid = true;
+            }
+            else {
+                $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                isBillingFormValid = false;
+            }
 
+        //phone
         if (billingPhone === ``) {
             $(`#billingPhone`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#billingPhone`).siblings(`.invalid-feedback`).text(`Please enter your phone number`);
@@ -167,6 +199,7 @@ $(document).ready(function() {
             isBillingFormValid = false;
         }
 
+        //email
         if (billingEmail === ``) {
             $(`#billingEmail`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#billingEmail`).siblings(`.invalid-feedback`).text(`Please enter your email`);
@@ -182,20 +215,22 @@ $(document).ready(function() {
         }
     }
 
-    //shipping form validation
+    //shipping form validation (same as above, copy pasted and changed the variables to be appropriate)
     function shippingValidate() {
         //getting values from inputs, exact same as above
-        shippingFirstName = $(`#shippingFirstName`).val();
-        shippingLastName = $(`#shippingLastName`).val();
-        shippingAddress = $(`#shippingAddress`).val();
-        shippingCountry = $(`#shippingCountry`).val();
-        shippingProvince = $(`#shippingProvince`).val();
-        shippingCity = $(`#shippingCity`).val();
+        if (!$(`#sameInfo`).prop(`checked`)) {
+            shippingFirstName = $(`#shippingFirstName`).val();
+            shippingLastName = $(`#shippingLastName`).val();
+            shippingAddress = $(`#shippingAddress`).val();
+            shippingCountry = $(`#shippingCountry`).val();
+            shippingProvince = $(`#shippingProvince`).val();
+            shippingCity = $(`#shippingCity`).val();
         shippingPostalCode = $(`#shippingZip`).val();
-        shippingPhone = $(`#shippingPhone`).val();
-        shippingEmail = $(`#shippingEmail`).val();
-
+            shippingPhone = $(`#shippingPhone`).val();
+            shippingEmail = $(`#shippingEmail`).val();
+        }
         //going through and checking if fields are either empty, or match the regex.
+        //first name
         if (shippingFirstName === ``) {
             $(`#shippingFirstName`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#shippingFirstName`).siblings(`.invalid-feedback`).text(`Please enter your first name`);
@@ -210,6 +245,7 @@ $(document).ready(function() {
             isShippingFormValid = false;
         }
 
+        //last name
         if (shippingLastName === ``) {
             $(`#shippingLastName`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#shippingLastName`).siblings(`.invalid-feedback`).text(`Please enter your last name`);
@@ -224,6 +260,7 @@ $(document).ready(function() {
             isShippingFormValid = false;
         }
 
+        //address
         if (shippingAddress === ``) {
             $(`#shippingAddress`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#shippingAddress`).siblings(`.invalid-feedback`).text(`Please enter your address`);
@@ -237,26 +274,45 @@ $(document).ready(function() {
             $(`#shippingAddress`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
         }
 
+        //country
         if (shippingCountry === null) {
             $(`#shippingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#shippingCountry`).siblings(`.invalid-feedback`).text(`Please select a country`);
             isShippingFormValid = false;
         }
         else {
-            $(`#shippingCountry`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isShippingFormValid = true;
+            if (shippingCountry === `CAD` && shippingPostalCode.match(canRegPostal)) {
+                $(`#shippingCountry`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+                isShippingFormValid = true;
+            }
+            else {
+                $(`#shippingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
+                $(`#shippingCountry`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
+                $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#shippingZip`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
+                isShippingFormValid = false;
+            }
         }
 
+        //province/state
         if (shippingProvince === null) {
-            $(`#shippingProvince`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(`#shippingProvince`).siblings(`.invalid-feedback`).text(`Please select a province`);
-            isShippingFormValid = false;
+            if (shippingCountry === `CAD`) {
+                $(`#shippingProvince`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
+                $(`#shippingProvince`).siblings(`.invalid-feedback`).text(`Please select a province`);
+                isShippingFormValid = false;
+            }
+            else {
+                $(`#shippingProvince`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
+                $(`#shippingProvince`).siblings(`.invalid-feedback`).text(`Please select a state`);
+                isShippingFormValid = false;
+            }
         }
         else {
-            $(`#shippingProvince`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+            $(`#billingProvince`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
             isShippingFormValid = true;
         }
 
+        //city
         if (shippingCity === ``) {
             $(`#shippingCity`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#shippingCity`).siblings(`.invalid-feedback`).text(`Please enter your city`);
@@ -271,6 +327,7 @@ $(document).ready(function() {
             isShippingFormValid = false;
         }
 
+        //postal/zip
         if (shippingPostalCode === ``) {
             $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#shippingZip`).siblings(`.invalid-feedback`).text(`Please enter your postal code`);
@@ -285,6 +342,7 @@ $(document).ready(function() {
             isShippingFormValid = false;
         }
 
+        //phone
         if (shippingPhone === ``) {
             $(`#shippingPhone`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#shippingPhone`).siblings(`.invalid-feedback`).text(`Please enter your phone number`);
@@ -299,6 +357,7 @@ $(document).ready(function() {
             isShippingFormValid = false;
         }
 
+        //email
         if (shippingEmail === ``) {
             $(`#shippingEmail`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#shippingEmail`).siblings(`.invalid-feedback`).text(`Please enter your email`);
@@ -314,13 +373,12 @@ $(document).ready(function() {
         }
     }
 
+    //credit card validation
     function validateCreditCard() {
-
         billingCcNumber = $(`#creditCardNumber`).val();
         billingCcMonth = $(`#expirationMonth`).val();
         billingCcYear = $(`#expirationYear`).val();
         billingCvc = $(`#cvcNumber`).val();
-        console.log(billingCcYear);
         if (billingCcNumber === ``) {
             $(`#creditCardNumber`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#creditCardNumber`).siblings(`.invalid-feedback`).text(`Please enter your credit card number`);
@@ -345,13 +403,14 @@ $(document).ready(function() {
             $(`#expirationMonth`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
             isCreditCardFormValid = true;
         }
-        else {
+        else if (billingCcMonth < currentMonth && billingCcYear < currentYear) { 
             $(`#expirationMonth`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
             $(`#expirationMonth`).siblings(`.invalid-feedback`).text(`Cannot be in the past!`);
             isCreditCardFormValid = false;
         }
 
-        if (billingCcYear = ``) {
+
+        if (billingCcYear === ``) {
             $(`#expirationYear`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#expirationYear`).siblings(`.invalid-feedback`).text(`Please enter an expiration year`);
             isCreditCardFormValid = false;
@@ -360,7 +419,7 @@ $(document).ready(function() {
             $(`#expirationYear`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
             isCreditCardFormValid = true;
         }
-        else {
+        else if (billingCcMonth < currentMonth && billingCcYear < currentYear) {
             $(`#expirationYear`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
             $(`#expirationYear`).siblings(`.invalid-feedback`).text(`Cannot be in the past!`);
             isCreditCardFormValid = false;
@@ -384,7 +443,8 @@ $(document).ready(function() {
     }
 
     //validation for billing/shipping/credit card forms, using these functions to give real-time feedback to the user
-    $(`#billingFirstName`).on(`focusout`, function() { //billing first name
+    //first name
+    $(`#billingFirstName`).on(`focusout`, function() {
         billingFirstName = this.value; //gets the value
         if (billingFirstName.match(regFirstName)) { //checks against regex and displays feedback
             $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
@@ -397,6 +457,7 @@ $(document).ready(function() {
         }
     });
 
+    //last name
     $(`#billingLastName`).on(`focusout`, function() { //billing last name
         billingLastName = this.value;
         if (billingLastName.match(regLastName)) {
@@ -410,6 +471,7 @@ $(document).ready(function() {
         }
     });
 
+    //address
     $(`#billingAddress`).on(`focusout`, function() {
         billingAddress = this.value;
         if (billingAddress.match(regAddress)) {
@@ -423,6 +485,7 @@ $(document).ready(function() {
         }
     });
 
+    //second address
     $(`#billingSecondAddress`).on(`focusout`, function() {
         billingSecondAddress = this.value;
         if (billingSecondAddress.length === 0) {
@@ -440,6 +503,7 @@ $(document).ready(function() {
         }
     });
 
+    //city
     $(`#billingCity`).on(`focusout`, function() {
         billingCity = this.value;
         if (billingCity.match(regCity)) {
@@ -453,6 +517,7 @@ $(document).ready(function() {
         }
     });
 
+    //phone
     $(`#billingPhone`).on(`focusout`, function() {
         billingPhone = this.value;
         if (billingPhone.match(regPhone)) {
@@ -466,6 +531,7 @@ $(document).ready(function() {
         }
     });
 
+    //email
     $(`#billingEmail`).on(`focusout`, function() {
         billingEmail = this.value;
         if (billingEmail.match(regEmail)) {
@@ -479,6 +545,7 @@ $(document).ready(function() {
         }
     });
 
+    //country
     $(`#billingCountry`).on(`input`, function() {
         billingCountry = this.value;
         if (billingCountry === 'CAD') {
@@ -495,6 +562,7 @@ $(document).ready(function() {
         }
     });
 
+    //province
     $(`#billingProvince`).on(`input`, function() {
         billingProvince = this.value;
         if (billingProvince === ``) {
@@ -507,120 +575,129 @@ $(document).ready(function() {
         }
     });
 
-    $('#billingCountry').on('change', function() { //billing country selecters
-        billingCountry = $(this).val(); //get the value of selected country and match appropriate regex.
+    //country
+    $('#billingCountry').on('change', function() {
+        billingCountry = $(this).val();
         billingPostalCode = $(`#billingZip`).val();
-        if (billingCountry === 'CAD') {
-            $(`#billingZip`).attr(`placeholder`, `A1A 1A1`);
+        if (billingCountry === `CAD` && billingPostalCode !== ``) { //to prevent message being displayed before user types a postal code in
             if (billingPostalCode.match(canRegPostal)) {
                 $(`#billingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
                 isBillingFormValid = true;
             } 
             else {
-                $(`#billingProvince`).empty().append(`
-                    <option selected disabled>Select Province</option>
-                    <option value="AB">Alberta</option>
-                    <option value="BC">British Columbia</option>
-                    <option value="MB">Manitoba</option>
-                    <option value="NB">New Brunswick</option>
-                    <option value="NL">Newfoundland and Labrador</option>
-                    <option value="NS">Nova Scotia</option>
-                    <option value="NT">Northwest Territories</option>
-                    <option value="NU">Nunavut</option>
-                    <option value="ON">Ontario</option>
-                    <option value="PE">Prince Edward Island</option>
-                    <option value="QC">Quebec</option>
-                    <option value="SK">Saskatchewan</option>
-                    <option value="YT">Yukon</option>
-                `);
-                isBillingFormValid = true;
+                $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#billingZip`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
+                isBillingFormValid = false;
             }
         }
-        if (billingCountry === 'USA') {
-            $(`#billingZip`).attr(`placeholder`, `12345`);
+        if (billingCountry === 'USA' && billingPostalCode !== ``) {
             if (billingPostalCode.match(usaRegPostal)) {
                 $(`#billingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
                 isBillingFormValid = true;
             }
             else {
-                $(`#billingProvince`).empty().append(`
-                    <option selected disabled>Select State</option>
-                    <option value="AK">Alaska</option>
-                    <option value="AL">Alabama</option>
-                    <option value="AR">Arkansas</option>
-                    <option value="AZ">Arizona</option>
-                    <option value="CA">California</option>
-                    <option value="CO">Colorado</option>
-                    <option value="CT">Connecticut</option>
-                    <option value="DC">District of Columbia</option>
-                    <option value="DE">Delaware</option>
-                    <option value="FL">Florida</option>
-                    <option value="GA">Georgia</option>
-                    <option value="HI">Hawaii</option>
-                    <option value="IA">Iowa</option>
-                    <option value="ID">Idaho</option>
-                    <option value="IL">Illinois</option>
-                    <option value="IN">Indiana</option>
-                    <option value="KS">Kansas</option>
-                    <option value="KY">Kentucky</option>
-                    <option value="LA">Louisiana</option>
-                    <option value="MA">Massachusetts</option>
-                    <option value="MD">Maryland</option>
-                    <option value="ME">Maine</option>
-                    <option value="MI">Michigan</option>
-                    <option value="MN">Minnesota</option>
-                    <option value="MO">Missouri</option>
-                    <option value="MS">Mississippi</option>
-                    <option value="MT">Montana</option>
-                    <option value="NC">North Carolina</option>
-                    <option value="ND">North Dakota</option>
-                    <option value="NE">Nebraska</option>
-                    <option value="NH">New Hampshire</option>
-                    <option value="NJ">New Jersey</option>
-                    <option value="NM">New Mexico</option>
-                    <option value="NV">Nevada</option>
-                    <option value="NY">New York</option>
-                    <option value="OH">Ohio</option>
-                    <option value="OK">Oklahoma</option>
-                    <option value="OR">Oregon</option>
-                    <option value="PA">Pennsylvania</option>
-                    <option value="PR">Puerto Rico</option>
-                    <option value="RI">Rhode Island</option>
-                    <option value="SC">South Carolina</option>
-                    <option value="SD">South Dakota</option>
-                    <option value="TN">Tennessee</option>
-                    <option value="TX">Texas</option>
-                    <option value="UT">Utah</option>
-                    <option value="VA">Virginia</option>
-                    <option value="VT">Vermont</option>
-                    <option value="WA">Washington</option>
-                    <option value="WI">Wisconsin</option>
-                    <option value="WV">West Virginia</option>
-                    <option value="WY">Wyoming</option>
-                `);
-                isBillingFormValid = true;
+                $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#billingZip`).siblings(`.invalid-feedback`).text(`Country/Zip mismatch`);
+                isBillingFormValid = false;
             }
+        }
+        if (billingCountry === `CAD`) { //display appropriate options based on country selected
+            $(`#billingZip`).attr(`placeholder`, `A1A 1A1`);
+            $(`#billingProvince`).empty().append(`
+                <option selected disabled>Select Province</option>
+                <option value="AB">Alberta</option>
+                <option value="BC">British Columbia</option>
+                <option value="MB">Manitoba</option>
+                <option value="NB">New Brunswick</option>
+                <option value="NL">Newfoundland and Labrador</option>
+                <option value="NS">Nova Scotia</option>
+                <option value="NT">Northwest Territories</option>
+                <option value="NU">Nunavut</option>
+                <option value="ON">Ontario</option>
+                <option value="PE">Prince Edward Island</option>
+                <option value="QC">Quebec</option>
+                <option value="SK">Saskatchewan</option>
+                <option value="YT">Yukon</option>
+            `);
+        }
+        else {
+            $(`#billingZip`).attr(`placeholder`, `12345`);
+            $(`#billingProvince`).empty().append(`
+                <option selected disabled>Select State</option>
+                <option value="AK">Alaska</option>
+                <option value="AL">Alabama</option>
+                <option value="AR">Arkansas</option>
+                <option value="AZ">Arizona</option>
+                <option value="CA">California</option>
+                <option value="CO">Colorado</option>
+                <option value="CT">Connecticut</option>
+                <option value="DC">District of Columbia</option>
+                <option value="DE">Delaware</option>
+                <option value="FL">Florida</option>
+                <option value="GA">Georgia</option>
+                <option value="HI">Hawaii</option>
+                <option value="IA">Iowa</option>
+                <option value="ID">Idaho</option>
+                <option value="IL">Illinois</option>
+                <option value="IN">Indiana</option>
+                <option value="KS">Kansas</option>
+                <option value="KY">Kentucky</option>
+                <option value="LA">Louisiana</option>
+                <option value="MA">Massachusetts</option>
+                <option value="MD">Maryland</option>
+                <option value="ME">Maine</option>
+                <option value="MI">Michigan</option>
+                <option value="MN">Minnesota</option>
+                <option value="MO">Missouri</option>
+                <option value="MS">Mississippi</option>
+                <option value="MT">Montana</option>
+                <option value="NC">North Carolina</option>
+                <option value="ND">North Dakota</option>
+                <option value="NE">Nebraska</option>
+                <option value="NH">New Hampshire</option>
+                <option value="NJ">New Jersey</option>
+                <option value="NM">New Mexico</option>
+                <option value="NV">Nevada</option>
+                <option value="NY">New York</option>
+                <option value="OH">Ohio</option>
+                <option value="OK">Oklahoma</option>
+                <option value="OR">Oregon</option>
+                <option value="PA">Pennsylvania</option>
+                <option value="PR">Puerto Rico</option>
+                <option value="RI">Rhode Island</option>
+                <option value="SC">South Carolina</option>
+                <option value="SD">South Dakota</option>
+                <option value="TN">Tennessee</option>
+                <option value="TX">Texas</option>
+                <option value="UT">Utah</option>
+                <option value="VA">Virginia</option>
+                <option value="VT">Vermont</option>
+                <option value="WA">Washington</option>
+                <option value="WI">Wisconsin</option>
+                <option value="WV">West Virginia</option>
+                <option value="WY">Wyoming</option>
+            `);
         }
     });
 
+    //postal/zip
     $(`#billingZip`).on(`focusout`, function() {
         billingPostalCode = this.value;
         billingCountry = $(`#billingCountry`).val();
-        if (billingCountry === `CAD`) {
+        if (billingCountry === `CAD`) { //checking which country was selected and displaying appropriate feedback
             if (billingPostalCode.match(canRegPostal)) {
                 $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-                $(this).siblings(`.invalid-feedback`).text(`Please enter a valid postal code`);
-                isBillingFormValid = false;
+                isBillingFormValid = true;
             } else {
                 $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
                 $(this).siblings(`.invalid-feedback`).text(`Please enter a valid postal code`);
                 isBillingFormValid = false;
             }
+            
         } else if (billingCountry === `USA`) {
             if (billingPostalCode.match(usaRegPostal)) {
-                $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-                $(this).siblings(`.invalid-feedback`).text(`Please enter a valid zip code`);   
-                isBillingFormValid = false;            
+                $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();  
+                isBillingFormValid = true;            
             } else {
                 $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
                 $(this).siblings(`.invalid-feedback`).text(`Please enter a valid zip code`);
@@ -637,9 +714,9 @@ $(document).ready(function() {
         }
     });
     
-    // SHIPPING (same as billing, nothing really different here except variable names)
-
-    $(`#shippingFirstName`).on(`focusout`, function() { //shipping first name
+    // SHIPPING (same as billing, nothing different here except variable names)
+    //first name
+    $(`#shippingFirstName`).on(`focusout`, function() { 
         shippingFirstName = this.value;
         if (shippingFirstName.match(regFirstName)) {
             $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
@@ -652,13 +729,7 @@ $(document).ready(function() {
         }
     });
 
-    $(`#shippingFirstName`).on(`input`, function() {
-        if (this.checkValidity()) {
-            $(this).removeClass(`is-valid`).removeClass(`is-invalid`).siblings(`.invalid-feedback`).hide();
-            isShippingFormValid = true;
-        }
-    });
-
+    //last name
     $(`#shippingLastName`).on(`focusout`, function() { //billing last name
         shippingLastName = this.value;
         if (shippingLastName.match(regLastName)) {
@@ -672,6 +743,7 @@ $(document).ready(function() {
         }
     });
 
+    //address
     $(`#shippingAddress`).on(`focusout`, function() {
         shippingAddress = this.value;
         if (shippingAddress.match(regAddress)) {
@@ -685,6 +757,7 @@ $(document).ready(function() {
         }
     });
 
+    //second address
     $(`#shippingSecondAddress`).on(`focusout`, function() {
         shippingSecondAddress = this.value;
         if (shippingSecondAddress.length === 0) {
@@ -702,6 +775,7 @@ $(document).ready(function() {
         }
     });
 
+    //city
     $(`#shippingCity`).on(`focusout`, function() {
         shippingCity = this.value;
         if (shippingCity.match(regCity)) {
@@ -715,6 +789,7 @@ $(document).ready(function() {
         }
     });
 
+    //phone
     $(`#shippingPhone`).on(`focusout`, function() {
         shippingPhone = this.value;
         if (shippingPhone.match(regPhone)) {
@@ -728,6 +803,7 @@ $(document).ready(function() {
         }
     });
 
+    //email
     $(`#shippingEmail`).on(`focusout`, function() {
         shippingEmail = this.value;
         if (shippingEmail.match(regEmail)) {
@@ -741,104 +817,116 @@ $(document).ready(function() {
         }
     });
 
-    $('#shippingCountry').on('change', function() { //billing country selecters
-        shippingCountry = $(this).val(); //get the value of selected country and match appropriate regex.
+    //country
+    $('#shippingCountry').on('change', function() {
+        shippingCountry = $(this).val();
         shippingPostalCode = $(`#shippingZip`).val();
-        if (shippingCountry === 'CAD') {
+        if (shippingCountry === `CAD` && shippingPostalCode !== ``) { //to prevent message being displayed before user types a postal code in
             if (shippingPostalCode.match(canRegPostal)) {
-                $(`#shippingZip`).removeClass(`is-invalid`).siblings(`.invalid-feedback`).hide().addClass(`is-valid`);
+                $(`#shippingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
                 isShippingFormValid = true;
             } 
             else {
-                $(`#shippingProvince`).empty().append(`
-                    <option selected disabled>Select Province</option>
-                    <option value="AB">Alberta</option>
-                    <option value="BC">British Columbia</option>
-                    <option value="MB">Manitoba</option>
-                    <option value="NB">New Brunswick</option>
-                    <option value="NL">Newfoundland and Labrador</option>
-                    <option value="NS">Nova Scotia</option>
-                    <option value="NT">Northwest Territories</option>
-                    <option value="NU">Nunavut</option>
-                    <option value="ON">Ontario</option>
-                    <option value="PE">Prince Edward Island</option>
-                    <option value="QC">Quebec</option>
-                    <option value="SK">Saskatchewan</option>
-                    <option value="YT">Yukon</option>
-                `);
-                isShippingFormValid = true;
+                $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#shippingZip`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
+                isShippingFormValid = false;
             }
         }
-        if (shippingCountry === 'USA') {
+        if (shippingCountry === 'USA' && shippingPostalCode !== ``) {
             if (shippingPostalCode.match(usaRegPostal)) {
                 $(`#shippingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
                 isShippingFormValid = true;
             }
             else {
-                $(`#shippingProvince`).empty().append(`
-                    <option selected disabled>Select State</option>
-                    <option value="AK">Alaska</option>
-                    <option value="AL">Alabama</option>
-                    <option value="AR">Arkansas</option>
-                    <option value="AZ">Arizona</option>
-                    <option value="CA">California</option>
-                    <option value="CO">Colorado</option>
-                    <option value="CT">Connecticut</option>
-                    <option value="DC">District of Columbia</option>
-                    <option value="DE">Delaware</option>
-                    <option value="FL">Florida</option>
-                    <option value="GA">Georgia</option>
-                    <option value="HI">Hawaii</option>
-                    <option value="IA">Iowa</option>
-                    <option value="ID">Idaho</option>
-                    <option value="IL">Illinois</option>
-                    <option value="IN">Indiana</option>
-                    <option value="KS">Kansas</option>
-                    <option value="KY">Kentucky</option>
-                    <option value="LA">Louisiana</option>
-                    <option value="MA">Massachusetts</option>
-                    <option value="MD">Maryland</option>
-                    <option value="ME">Maine</option>
-                    <option value="MI">Michigan</option>
-                    <option value="MN">Minnesota</option>
-                    <option value="MO">Missouri</option>
-                    <option value="MS">Mississippi</option>
-                    <option value="MT">Montana</option>
-                    <option value="NC">North Carolina</option>
-                    <option value="ND">North Dakota</option>
-                    <option value="NE">Nebraska</option>
-                    <option value="NH">New Hampshire</option>
-                    <option value="NJ">New Jersey</option>
-                    <option value="NM">New Mexico</option>
-                    <option value="NV">Nevada</option>
-                    <option value="NY">New York</option>
-                    <option value="OH">Ohio</option>
-                    <option value="OK">Oklahoma</option>
-                    <option value="OR">Oregon</option>
-                    <option value="PA">Pennsylvania</option>
-                    <option value="PR">Puerto Rico</option>
-                    <option value="RI">Rhode Island</option>
-                    <option value="SC">South Carolina</option>
-                    <option value="SD">South Dakota</option>
-                    <option value="TN">Tennessee</option>
-                    <option value="TX">Texas</option>
-                    <option value="UT">Utah</option>
-                    <option value="VA">Virginia</option>
-                    <option value="VT">Vermont</option>
-                    <option value="WA">Washington</option>
-                    <option value="WI">Wisconsin</option>
-                    <option value="WV">West Virginia</option>
-                    <option value="WY">Wyoming</option>
-                `);
-                isShippingFormValid = true;
+                $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#shippingZip`).siblings(`.invalid-feedback`).text(`Country/Zip mismatch`);
+                isShippingFormValid = false;
             }
+        }
+        if (shippingCountry === `CAD`) { //display appropriate options based on country selected
+            $(`#shippingZip`).attr(`placeholder`, `A1A 1A1`);
+            $(`#shippingProvince`).empty().append(`
+                <option selected disabled>Select Province</option>
+                <option value="AB">Alberta</option>
+                <option value="BC">British Columbia</option>
+                <option value="MB">Manitoba</option>
+                <option value="NB">New Brunswick</option>
+                <option value="NL">Newfoundland and Labrador</option>
+                <option value="NS">Nova Scotia</option>
+                <option value="NT">Northwest Territories</option>
+                <option value="NU">Nunavut</option>
+                <option value="ON">Ontario</option>
+                <option value="PE">Prince Edward Island</option>
+                <option value="QC">Quebec</option>
+                <option value="SK">Saskatchewan</option>
+                <option value="YT">Yukon</option>
+            `);
+        }
+        else {
+            $(`#shippingZip`).attr(`placeholder`, `12345`);
+            $(`#shippingProvince`).empty().append(`
+                <option selected disabled>Select State</option>
+                <option value="AK">Alaska</option>
+                <option value="AL">Alabama</option>
+                <option value="AR">Arkansas</option>
+                <option value="AZ">Arizona</option>
+                <option value="CA">California</option>
+                <option value="CO">Colorado</option>
+                <option value="CT">Connecticut</option>
+                <option value="DC">District of Columbia</option>
+                <option value="DE">Delaware</option>
+                <option value="FL">Florida</option>
+                <option value="GA">Georgia</option>
+                <option value="HI">Hawaii</option>
+                <option value="IA">Iowa</option>
+                <option value="ID">Idaho</option>
+                <option value="IL">Illinois</option>
+                <option value="IN">Indiana</option>
+                <option value="KS">Kansas</option>
+                <option value="KY">Kentucky</option>
+                <option value="LA">Louisiana</option>
+                <option value="MA">Massachusetts</option>
+                <option value="MD">Maryland</option>
+                <option value="ME">Maine</option>
+                <option value="MI">Michigan</option>
+                <option value="MN">Minnesota</option>
+                <option value="MO">Missouri</option>
+                <option value="MS">Mississippi</option>
+                <option value="MT">Montana</option>
+                <option value="NC">North Carolina</option>
+                <option value="ND">North Dakota</option>
+                <option value="NE">Nebraska</option>
+                <option value="NH">New Hampshire</option>
+                <option value="NJ">New Jersey</option>
+                <option value="NM">New Mexico</option>
+                <option value="NV">Nevada</option>
+                <option value="NY">New York</option>
+                <option value="OH">Ohio</option>
+                <option value="OK">Oklahoma</option>
+                <option value="OR">Oregon</option>
+                <option value="PA">Pennsylvania</option>
+                <option value="PR">Puerto Rico</option>
+                <option value="RI">Rhode Island</option>
+                <option value="SC">South Carolina</option>
+                <option value="SD">South Dakota</option>
+                <option value="TN">Tennessee</option>
+                <option value="TX">Texas</option>
+                <option value="UT">Utah</option>
+                <option value="VA">Virginia</option>
+                <option value="VT">Vermont</option>
+                <option value="WA">Washington</option>
+                <option value="WI">Wisconsin</option>
+                <option value="WV">West Virginia</option>
+                <option value="WY">Wyoming</option>
+            `);
         }
     });
 
+    //postal/zip
     $(`#shippingZip`).on(`focusout`, function() {
         shippingPostalCode = this.value;
         shippingCountry = $(`#shippingCountry`).val();
-        if (shippingCountry === `CAD`) {
+        if (shippingCountry === `CAD`) { //checking which country was selected and displaying appropriate feedback
             if (shippingPostalCode.match(canRegPostal)) {
                 $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide()
                 $(this).siblings(`.invalid-feedback`).text(`Please enter a valid postal code`);
@@ -869,9 +957,7 @@ $(document).ready(function() {
         }
     });
 
-
-    // CREDIT CARD 
-
+    //credit card form
     $(`#creditCardNumber`).on(`focusout`, function() {
         billingCcNumber = this.value;
         if (billingCcNumber.match(ccRegex)) {
@@ -886,11 +972,16 @@ $(document).ready(function() {
     });
 
     $(`#expirationMonth`).on(`focusout`, function() {
-        billingCcMonth = parseInt(this.value);
         billingCcYear = parseInt($(`#expirationYear`).val());
-        if ($(`#expirationYear`).val().match(yearRegex) && (billingCcYear > currentYear || (billingCcYear === currentYear && billingCcMonth >= currentMonth))) {
-            if (this.value.match(monthRegex)) {
+        if (billingCcYear < currentYear) {
+            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
+            $(this).siblings(`.invalid-feedback`).text(`Cannot be in the past!`);
+            isCreditCardFormValid = false;
+        }
+        if ($(`#expirationYear`).val().match(yearRegex) && (billingCcYear > currentYear || (billingCcYear === currentYear && this.value >= currentMonth))) { //checking the date
+            if (this.value.match(monthRegex) && this.value !== ``) {
                 $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+                $(`#expirationYear`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
                 isCreditCardFormValid = true;
             } 
             else {
@@ -907,17 +998,21 @@ $(document).ready(function() {
       
     $(`#expirationYear`).on(`focusout`, function() {
         billingCcMonth = $(`#expirationMonth`).val();
-        billingCcYear = parseInt(this.value);
-        if (((!billingCcMonth && billingCcMonth !== 0) || billingCcMonth.match(monthRegex)) && this.value.match(yearRegex) && (billingCcYear > currentYear || (billingCcYear === currentYear && billingCcMonth >= currentMonth))) {
+        if (((billingCcMonth.match(monthRegex)) && this.value.match(yearRegex)) && ((this.value >= currentYear && billingCcMonth >= currentMonth) || (this.value === currentYear && billingCcMonth === currentMonth +1))) {
             if (billingCcMonth) {
+                $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
                 $(`#expirationMonth`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
                 isCreditCardFormValid = true;
             }
             $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+            $(`#expirationMonth`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
             isCreditCardFormValid = true;
         } 
         else {
             $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#expirationMonth`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#expirationMonth`).siblings(`.invalid-feedback`).text("Cannot be in the past!");
+            $(this).siblings(`.invalid-feedback`).text("Cannot be in the past!");
             isCreditCardFormValid = false;
         }
     });
@@ -1010,10 +1105,15 @@ $(document).ready(function() {
         $(`#submitOrderError`).hide();
         billingProvince = $(`#billingProvince`).val();
         shippingProvince = billingProvince;
-        billingValidate();
-        shippingValidate();
-        validateCreditCard();
-        
+        setTimeout(function() {
+            billingValidate();
+            shippingValidate();
+            validateCreditCard();
+            console.log(`Shipping: `+ isShippingFormValid);
+            console.log(`Billing: ` + isBillingFormValid);
+            console.log(`Credit: ` + isCreditCardFormValid);
+        }, 2000)
+
         //close modal and display success message
         if (isShippingFormValid && isCreditCardFormValid && isBillingFormValid) {
             $(`#submitOrderBtn`).html(`<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...`);

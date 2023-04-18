@@ -319,16 +319,24 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
 
         //featured section
         $(`#featuredCardContainer`) .append(` 
-            <div class="card mx-auto col-md-4" style="width:25rem">
-                <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="...">
-                <div class="card-body d-flex flex-column justify-content-between">
-                    <h5 id="productTitle${i}"class="card-title" data-title="${catalogOfProducts[i].title}">${catalogOfProducts[i].title}</h5>
-                    <p class="card-text">${catalogOfProducts[i].description}</p>
-                    <p class="card-text">${currencySymbol}${priceInSelectedCurrency}</p>
-                    <div class="mt-auto:">
-                        <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+            <div class="col" >
+                <div class="card h-100 mb-3" style="max-width:35rem">
+                    <div class="row g-0">
+                        <div class="col-md-4 mt-auto mb-auto">
+                            <img src="${catalogOfProducts[i].image}" class="card-img-top " alt="...">
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card-body">
+                                <h5 id="productTitle${i}"class="card-title" data-title="${catalogOfProducts[i].title}">${catalogOfProducts[i].title}</h5>
+                                <p class="card-text">${catalogOfProducts[i].description}</p>
+                                <p class="card-text">${currencySymbol}${priceInSelectedCurrency}</p>
+                                <div class="mt-auto:">
+                                    <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </div>            
             </div>`);
     }
 
@@ -620,6 +628,7 @@ function checkoutModal(selectedCurrency) { //similar to the subtotalCheckoutTabl
                     productCost = parseFloat(productCost).toFixed(2);
                 }
                 let productSubtotal = productCost * itemQuantity;
+                productSubtotal = parseFloat(productSubtotal).toFixed(2);
                 let row = `
                     <tr>
                         <td scope="col">${product.productTitle}</td>
@@ -657,6 +666,7 @@ function checkoutModal(selectedCurrency) { //similar to the subtotalCheckoutTabl
                     cartCost = parseFloat(cartCost).toFixed(2);
                 }
                 cartSubtotal += cartCost * cartQuantity;
+                cartSubtotal = parseFloat(cartSubtotal).toFixed(2);
             }
         }
     }
