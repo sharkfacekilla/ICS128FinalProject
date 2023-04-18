@@ -173,12 +173,17 @@ const callProducts = async () => {
 };
 
 $(document).ready(function () { //document ready function
-    /*     $(`#clearCartBtn`).hide(); */ //show clear cart and checkout buttons
+    $(document).on(`click scroll`, function(event) { //closes navbar when user clicks outside of it or scrolls on the page
+        let isOpen = $(`.navbar-collapse`).hasClass(`show`);
+        let click = $(event.target);
+        if (isOpen === true && !click.hasClass(`navbar-toggler`)) {
+            $(`.navbar-toggler`).click();
+        }
+    })
     $(`#checkoutBtn`).hide();
     $(`#clearCartBtn`).hide();
     $(`#offcanvasTableFooter`).hide();
     $(`#offcanvasHeader`).hide();
-
     //calling functions in this order on page refresh to make sure everything loads correctly
     callProducts()
         .then(() => {
@@ -318,26 +323,32 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
         //everything below this is the same code, but the only thing changed is the section, and amount of cards displayed in that section
 
         //featured section
-        $(`#featuredCardContainer`) .append(` 
-            <div class="col" >
-                <div class="card h-100 mb-3" style="max-width:35rem">
-                    <div class="row g-0">
-                        <div class="col-md-4 mt-auto mb-auto">
-                            <img src="${catalogOfProducts[i].image}" class="card-img-top " alt="...">
+        $(`#featuredCardContainer`) .append(`  
+            <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
+                <div class="card h-100">
+                    <div class="d-flex justify-content-between p-3">
+                        <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+                    </div>
+                    <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
+                            <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
                         </div>
-                        <div class="col-md-8">
-                            <div class="card-body">
-                                <h5 id="productTitle${i}"class="card-title" data-title="${catalogOfProducts[i].title}">${catalogOfProducts[i].title}</h5>
-                                <p class="card-text">${catalogOfProducts[i].description}</p>
-                                <p class="card-text">${currencySymbol}${priceInSelectedCurrency}</p>
-                                <div class="mt-auto:">
-                                    <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
-                                </div>
-                            </div>
+                        <div class="d-flex justify-content-end mb-3">
+                            <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
                         </div>
                     </div>
-                </div>            
-            </div>`);
+                    <div class="mb-3 ms-3">
+                    <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+                </div>
+                </div>
+            </div>
+      </div>
+  </div>`);
     }
 
     //new arrivals section
@@ -357,18 +368,32 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
             }
             priceInSelectedCurrency = parseFloat(priceInSelectedCurrency).toFixed(2);
         }
-        $(`#newCardContainer`).append(`
-            <div class="card mx-auto col-md-4" style="width:25rem">
-                <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="...">
-                <div class="card-body d-flex flex-column justify-content-between">
-                    <h5 id="productTitle${i}"class="card-title" data-title="${catalogOfProducts[i].title}">${catalogOfProducts[i].title}</h5>
-                    <p class="card-text">${catalogOfProducts[i].description}</p>
-                    <p class="card-text">${currencySymbol}${priceInSelectedCurrency}</p>
-                    <div class="mt-auto:">
-                        <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+        $(`#newCardContainer`) .append(`  
+            <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
+                <div class="card h-100">
+                    <div class="d-flex justify-content-between p-3">
+                        <p class="lead mb-0">${catalogOfProducts[i].title}</p>
                     </div>
+                    <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
+                            <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
+                        </div>
+                        <div class="d-flex justify-content-end mb-3">
+                            <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
+                        </div>
+                    </div>
+                    <div class="mb-3 ms-3">
+                    <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
                 </div>
-            </div>`);
+                </div>
+            </div>
+      </div>
+  </div>`);
     }
 
     //mens section
@@ -389,17 +414,31 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
             priceInSelectedCurrency = parseFloat(priceInSelectedCurrency).toFixed(2);
         }
         $(`#mensCardContainer`).append(`
-            <div class="card mx-auto col-md-4" style="width:25rem">
-                <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="...">
-                <div class="card-body d-flex flex-column justify-content-between">
-                    <h5 id="productTitle${i}"class="card-title" data-title="${catalogOfProducts[i].title}">${catalogOfProducts[i].title}</h5>
-                    <p class="card-text">${catalogOfProducts[i].description}</p>
-                    <p class="card-text">${currencySymbol}${priceInSelectedCurrency}</p>
-                    <div class="mt-auto:">
-                        <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
-                    </div>
+        <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
+        <div class="card h-100">
+            <div class="d-flex justify-content-between p-3">
+                <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+            </div>
+            <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
+                    <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
                 </div>
-            </div>`);
+                <div class="d-flex justify-content-end mb-3">
+                    <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
+                </div>
+            </div>
+            <div class="mb-3 ms-3">
+            <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+        </div>
+        </div>
+    </div>
+</div>
+</div>`);
     }
 
     //accessories section
@@ -419,18 +458,32 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
             }
             priceInSelectedCurrency = parseFloat(priceInSelectedCurrency).toFixed(2);
         }
-        $(`#accessoriesCardContainer`)
-            .append(`<div class="card mx-auto col-md-4" style="width:25rem">
-            <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="...">
-            <div class="card-body d-flex flex-column justify-content-between">
-                <h5 id="productTitle${i}"class="card-title" data-title="${catalogOfProducts[i].title}">${catalogOfProducts[i].title}</h5>
-                <p class="card-text">${catalogOfProducts[i].description}</p>
-                <p class="card-text">${currencySymbol}${priceInSelectedCurrency}</p>
-                <div class="mt-auto:">
-                    <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+        $(`#accessoriesCardContainer`).append(`
+        <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
+        <div class="card h-100">
+            <div class="d-flex justify-content-between p-3">
+                <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+            </div>
+            <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
+                    <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
+                </div>
+                <div class="d-flex justify-content-end mb-3">
+                    <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
                 </div>
             </div>
-        </div>`);
+            <div class="mb-3 ms-3">
+            <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+        </div>
+        </div>
+    </div>
+</div>
+</div>`);
     }
 
     //womens section
@@ -450,18 +503,32 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
             }
             priceInSelectedCurrency = parseFloat(priceInSelectedCurrency).toFixed(2);
         }
-        $(`#womensCardContainer`)
-            .append(`<div class="card mx-auto col-md-4" style="width:25rem">
-            <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="...">
-            <div class="card-body d-flex flex-column justify-content-between">
-                <h5 id="productTitle${i}"class="card-title" data-title="${catalogOfProducts[i].title}">${catalogOfProducts[i].title}</h5>
-                <p class="card-text">${catalogOfProducts[i].description}</p>
-                <p class="card-text">${currencySymbol}${priceInSelectedCurrency}</p>
-                <div class="mt-auto:">
-                    <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+        $(`#womensCardContainer`).append(`
+        <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
+        <div class="card h-100">
+            <div class="d-flex justify-content-between p-3">
+                <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+            </div>
+            <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
+                    <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
+                </div>
+                <div class="d-flex justify-content-end mb-3">
+                    <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
                 </div>
             </div>
-        </div>`);
+            <div class="mb-3 ms-3">
+            <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+        </div>
+        </div>
+    </div>
+</div>
+</div>`);
     }
 
     //electronics section
@@ -482,19 +549,35 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
             priceInSelectedCurrency = parseFloat(priceInSelectedCurrency).toFixed(2);
         }
         $(`#electronicsCardContainer`).append(`
-        <div class="card mx-auto col-md-4" style="width:25rem">
-            <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="...">
-            <div class="card-body d-flex flex-column justify-content-between">
-                <h5 id="productTitle${i}"class="card-title" data-title="${catalogOfProducts[i].title}">${catalogOfProducts[i].title}</h5>
-                <p class="card-text">${catalogOfProducts[i].description}</p>
-                <p class="card-text">${currencySymbol}${priceInSelectedCurrency}</p>
-                <div class="mt-auto:">
-                    <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+        <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
+        <div class="card h-100">
+            <div class="d-flex justify-content-between p-3">
+                <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+            </div>
+            <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
+                    <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
+                </div>
+                <div class="d-flex justify-content-end mb-3">
+                    <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
                 </div>
             </div>
-        </div>`);
+            <div class="mb-3 ms-3">
+            <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+        </div>
+        </div>
+    </div>
+</div>
+</div>`);
     }
 }
+
+
 
 $(`#offcanvasCart`).on(`click`, `button`, function () { //removing an item from the cart function
     cartItems = get_cookie(`shopping_cart_items`); //get the cookie
@@ -502,6 +585,7 @@ $(`#offcanvasCart`).on(`click`, `button`, function () { //removing an item from 
     delete cartItems[productID]; //remove the item from the cart object
     set_cookie(`shopping_cart_items`, cartItems); //set the cookie with the updated cart object
     subtotalCheckoutTable(selectedCurrency); //update subtotals
+    checkoutModal(selectedCurrency);
     updateCartCounter(selectedCurrency);
 });
 
@@ -690,7 +774,7 @@ function checkoutModal(selectedCurrency) { //similar to the subtotalCheckoutTabl
             </tr>
             <tr>
                 <th scope="col" colspan="3">Total</th>
-                <th scope="col">${currencySymbol}${grandTotal}</th>
+                <th scope="col" id="grandTotal">${currencySymbol}${grandTotal}</th>
             </tr>`;
         $(`#checkoutFooter`).show();
         $(`#checkoutFooter`).append(grandtotalRow);

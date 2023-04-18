@@ -1,4 +1,7 @@
-//script purely for handling the validation of the checkout field... felt like putting it on it's own was a smart thing to do since it's big
+//script purely for handling the validation of the checkout field... thought putting it on it's own was a smart thing to do since it's big
+
+//I decided to add two validation methods, one to check while the user is typing and give real time feedback, and another when the user clicks the submit button
+
 //regex
 const regFirstName = /^[a-zA-Z]+$/;
 const regLastName = /^[a-zA-Z-]+$/;
@@ -15,6 +18,7 @@ const monthRegex = /^(0[1-9]|1[0-2]|10|11|12)$/;
 const yearRegex = /^(?:20)\d\d$/;
 const currentYear = new Date().getFullYear(); //get current date for credit card validaton later
 const currentMonth = new Date().getMonth() + 1;
+const submission = {};
 
 let billingFirstName;
 let billingLastName;
@@ -45,13 +49,208 @@ let shippingEmail;
 let isBillingFormValid = false;
 let isShippingFormValid = false;
 let isCreditCardFormValid = false;
+let grandTotal;
+let currency;
+let form_data = new FormData();
 
+const submitFunction = async(form_data) => {
+    try {
+        let response = await fetch(`https://deepblue.camosun.bc.ca/~c0180354/ics128/final/`,
+        { method: `POST`,
+        cache: `no-cache`,
+        body: form_data
+    }); 
+    if (response.ok) {
+        const data = await response.json();
+        console.log(data);
+    }
+    }
+    catch(error) {
+        console.error(`${error}`)
+    }
+}
 
 $(document).ready(function() {
+
     $(`#submitOrderBtn`).hide(); //initially hiding these buttons
     $(`#backBtn`).hide();
     $(`#submitOrderError`).hide();
+
+        // continue/back button logic in the checkout modal
+        $(`#continueBtn`).click(function() {
+            let currentLink = $(`.nav-link.active`);
+            let nextLink = currentLink.closest(`li.nav-item`).next().find(`.nav-link`);
+            let targetTab = $(nextLink.attr(`data-bs-target`));
     
+            if (nextLink.attr(`id`) === `pills-confirmation-tab`) {
+                $(`#submitOrderBtn`).show();
+                $(`#continueBtn`).hide();
+            }
+    
+            currentLink.removeClass(`active`);
+            nextLink.addClass(`active`);
+            $(`.tab-pane`).removeClass(`show active`);
+            targetTab.addClass(`show active`);
+            nextLink.trigger(`click`);
+        });
+    
+        $(`#backBtn`).click(function() {
+            let currentLink = $(`.nav-link.active`);
+            let prevLink = currentLink.closest(`li.nav-item`).prev().find(`.nav-link`);
+            let targetTab = $(prevLink.attr(`data-bs-target`));
+    
+            if (prevLink.attr(`id`) === `pills-billing-tab`) {
+                $(`#backBtn`).hide();
+            }
+            else {
+                $(`#backBtn`).show();
+            }
+    
+            currentLink.removeClass(`active`);
+            prevLink.addClass(`active`);
+            $(`.tab-pane`).removeClass(`show active`);
+            targetTab.addClass(`show active`);
+            prevLink.trigger(`click`);
+        });
+    
+        //if the same information as billing checkbox is checked, hides the shipping form and assigns the info into the shipping variables.
+        $(`#sameInfo`).click(function() {
+            if ($(`#sameInfo`).prop(`checked`)) {
+                $(`#shippingForm`).hide();
+                shippingFirstName = billingFirstName;
+                shippingLastName = billingLastName;
+                shippingAddress = billingAddress;
+                shippingAddress2 = billingAddress2;
+                shippingCountry = billingCountry;
+                shippingProvince = billingProvince;
+                shippingCity = billingCity;
+                shippingPostalCode = billingPostalCode;
+                shippingPhone = billingPhone;
+                shippingEmail = billingEmail;
+                isShippingFormValid = true;
+            }
+            else {
+                shippingFirstName = ``;
+                shippingLastName = ``;
+                shippingAddress = ``;
+                shippingAddress2 = ``;
+                shippingCountry = ``;
+                shippingProvince = ``;
+                shippingCity = ``;
+                shippingPostalCode = ``;
+                shippingPhone = ``;
+                shippingEmail = ``;
+                isShippingFormValid = false;
+                $(`#shippingForm`).show();
+            }
+        });
+    
+        //create a delay function to simulate submitting
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    
+        //submit orderbutton handler
+        $(`#submitOrderBtn`).click(function() {
+            $(`#submitOrderError`).hide(); //hide error message if it's showing
+/*             billingProvince = $(`#billingProvince`).val();
+            shippingProvince = billingProvince; */
+            setTimeout(function() {
+                billingValidate();
+                shippingValidate();
+                validateCreditCard();
+            }, 2000)
+    
+            //close modal and display success message if all forms are valid
+            if (isShippingFormValid && isCreditCardFormValid && isBillingFormValid) {
+                $(`#submitOrderBtn`).html(`<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...`);
+                delay(2000).then(() => { //creating a delay to simulate submission
+                    billingCcNumber = billingCcNumber.replace(/\s/g, ``);
+                    if (!shippingPhone.match(billingPhone)) {
+                        shippingPhone = shippingPhone.replace(/\s/g, ``);
+                    }
+                    billingPhone = billingPhone.replace(/\s/g, ``);
+                    submission.card_number = billingCcNumber;
+                    submission.expiry_month = billingCcMonth; 
+                    submission.expiry_year = billingCcYear;
+                    submission.security_code = billingCvc;
+                    grandTotal = $(`#grandTotal`).text();
+                    grandTotal =  parseFloat(grandTotal.replace(/[^\d.-]/g, ``));
+                    grandTotal = grandTotal.toFixed(2);
+                    submission.amount = grandTotal;
+                    currency = $(`#currencyDropdown .dropdown-item.active`).data(`currency`);
+                    currency = currency.toLowerCase();
+                    submission.currency = currency;
+                    billingCountry = billingCountry.slice(0,-1);
+                    shippingCountry = shippingCountry.slice(0,-1);
+                    let newBillingObj = {
+                        first_name: billingFirstName,
+                        last_name: billingLastName,
+                        address_1: billingAddress,
+                        address_2: billingAddress2,
+                        city: billingCity,
+                        province: billingProvince,
+                        country: billingCountry,
+                        postal: billingPostalCode,
+                        phone: billingPhone,
+                        email: billingEmail
+                    }
+                    let newShippingObj = {
+                        first_name: shippingFirstName,
+                        last_name: shippingLastName,
+                        address_1: shippingAddress,
+                        address_2: shippingAddress2,
+                        city: shippingCity,
+                        province: shippingProvince,
+                        country: shippingCountry,
+                        postal: shippingPostalCode,
+                        phone: shippingPhone,
+                        email: shippingEmail
+                    }
+                    submission.billing = newBillingObj;
+                    submission.shipping = newShippingObj;
+                    form_data.append(`submission`, JSON.stringify(submission));
+                    console.log(submission);
+                    for (let pair of form_data.entries()) {
+                        console.log(pair[0] + ': ' + pair[1]);
+                    }
+                    submitFunction(form_data);
+
+
+                    $(`#checkoutModal`).modal(`hide`);
+                    $(`#successModal`).modal(`show`);
+                    $(`#submitOrderBtn`).html(`Submit Order`);
+                    cartItems = get_cookie(`shopping_cart_items`);
+                    for (let productID in cartItems) {
+                        if (cartItems.hasOwnProperty(productID)) {
+                            delete cartItems[productID];
+                        }
+                    }
+                    set_cookie(`shopping_cart_items`, cartItems);
+                    updateCartCounter(selectedCurrency);
+                    subtotalCheckoutTable(selectedCurrency);
+                    checkoutModal(selectedCurrency);
+                    console.log(cartItems);
+                }).catch((error) => {
+                    $(`#submitOrderError`).html(error);
+                    $(`#submitOrderBtn`).html(`Submit Order`);
+                });
+            }
+            else {
+                $(`#submitOrderBtn`).html(`<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...`);
+                delay(2000).then(() => {
+                    $(`#submitOrderError`).show();
+                    $(`#submitOrderBtn`).html(`Submit Order`);
+                }).catch(error => {
+                    $(`#submitOrderError`).html(error);
+                    $(`#submitOrderBtn`).html(`Submit Order`);
+                });
+            }
+        });
+    
+
+    //FIRST VALIDATION METHOD: VALIDATING ON BUTTON CLICK
+
     //functions to validate fields on submit order button click
     function billingValidate() {
         //getting values from inputs
@@ -441,6 +640,8 @@ $(document).ready(function() {
         }
 
     }
+
+    //SECOND VALIDATION METHOD: CHECKING ON FOCUSOUT TO GIVE REAL-TIME FEEDBACK
 
     //validation for billing/shipping/credit card forms, using these functions to give real-time feedback to the user
     //first name
@@ -1029,115 +1230,6 @@ $(document).ready(function() {
         }
     });
 
-    $(`#continueBtn`).click(function() {
-        let currentLink = $(`.nav-link.active`);
-        let nextLink = currentLink.closest(`li.nav-item`).next().find(`.nav-link`);
-        let targetTab = $(nextLink.attr(`data-bs-target`));
-
-        if (nextLink.attr(`id`) === `pills-confirmation-tab`) {
-            $(`#submitOrderBtn`).show();
-            $(`#continueBtn`).hide();
-        }
-
-        currentLink.removeClass(`active`);
-        nextLink.addClass(`active`);
-        $(`.tab-pane`).removeClass(`show active`);
-        targetTab.addClass(`show active`);
-        nextLink.trigger(`click`);
-    });
-
-    $(`#backBtn`).click(function() {
-        let currentLink = $(`.nav-link.active`);
-        let prevLink = currentLink.closest(`li.nav-item`).prev().find(`.nav-link`);
-        let targetTab = $(prevLink.attr(`data-bs-target`));
-
-        if (prevLink.attr(`id`) === `pills-billing-tab`) {
-            $(`#backBtn`).hide();
-        }
-        else {
-            $(`#backBtn`).show();
-        }
-
-        currentLink.removeClass(`active`);
-        prevLink.addClass(`active`);
-        $(`.tab-pane`).removeClass(`show active`);
-        targetTab.addClass(`show active`);
-        prevLink.trigger(`click`);
-    });
-
-    $(`#sameInfo`).click(function() { //same information as billing checkbox handler
-        if ($(`#sameInfo`).prop(`checked`)) {
-            $(`#shippingForm`).hide();
-            shippingFirstName = billingFirstName;
-            shippingLastName = billingLastName;
-            shippingAddress = billingAddress;
-            shippingAddress2 = billingAddress2;
-            shippingCountry = billingCountry;
-            shippingProvince = billingProvince;
-            shippingCity = billingCity;
-            shippingPostalCode = billingPostalCode;
-            shippingPhone = billingPhone;
-            shippingEmail = billingEmail;
-            isShippingFormValid = true;
-        }
-        else {
-            shippingFirstName = ``;
-            shippingLastName = ``;
-            shippingAddress = ``;
-            shippingAddress2 = ``;
-            shippingCountry = ``;
-            shippingProvince = ``;
-            shippingCity = ``;
-            shippingPostalCode = ``;
-            shippingPhone = ``;
-            shippingEmail = ``;
-            isShippingFormValid = false;
-            $(`#shippingForm`).show();
-        }
-    });
-
-    //create a delay function to simulate submitting
-    function delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-    //submit button handler
-    $(`#submitOrderBtn`).click(function() {
-        $(`#submitOrderError`).hide();
-        billingProvince = $(`#billingProvince`).val();
-        shippingProvince = billingProvince;
-        setTimeout(function() {
-            billingValidate();
-            shippingValidate();
-            validateCreditCard();
-            console.log(`Shipping: `+ isShippingFormValid);
-            console.log(`Billing: ` + isBillingFormValid);
-            console.log(`Credit: ` + isCreditCardFormValid);
-        }, 2000)
-
-        //close modal and display success message
-        if (isShippingFormValid && isCreditCardFormValid && isBillingFormValid) {
-            $(`#submitOrderBtn`).html(`<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...`);
-            delay(2000).then(() => { //creating a delay to simulate submission
-                $(`#checkoutModal`).modal(`hide`);
-                $(`#successModal`).modal(`show`);
-                $(`#submitOrderBtn`).html(`Submit Order`);
-            }).catch((error) => {
-                $(`#submitOrderError`).html(error);
-                $(`#submitOrderBtn`).html(`Submit Order`);
-            });
-        }
-        else {
-            $(`#submitOrderBtn`).html(`<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...`);
-            delay(2000).then(() => {
-                $(`#submitOrderError`).show();
-                $(`#submitOrderBtn`).html(`Submit Order`);
-            }).catch(error => {
-                $(`#submitOrderError`).html(error);
-                $(`#submitOrderBtn`).html(`Submit Order`);
-            });
-        }
-    });
-
     //logic for hiding and showing buttons
     $(`#pills-payment-tab`).click(function() {
         $(`#submitOrderBtn`).hide();
@@ -1163,3 +1255,4 @@ $(document).ready(function() {
         $(`#backBtn`).show();
     });
 });
+//the end.
