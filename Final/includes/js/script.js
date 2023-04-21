@@ -10,6 +10,7 @@ class Catalog {
         this.image = image;
         this.quantity = quantity;
     }
+
     //setters
     set productID(id) {
         this.id = id;
@@ -35,6 +36,7 @@ class Catalog {
     set productQuantity(quantity) {
         this.quantity = quantity;
     }
+    
     //getters
     get productID() {
         return this.id;
@@ -66,63 +68,43 @@ class Catalog {
 //array for products
 let catalogOfProducts = []; //array that will hold the products
 let catalogProduct; //single product object
-const shipping = 15.0; //flat rate shipping cost
+const shipping = 15.00; //flat rate shipping cost
 let cartItems; //holding the products
 let selectedCurrency; //for the currency api stuff
 let currencyValues; //object that will hold the currency vales
+let tax = 0.00;
 
 //tax rates for provinces
-const abTax = 0.05;
-const bcTax = 0.12;
-const mbTax = 0.12;
-const newBrunswickTax = 0.15;
-const newfoundlandTax = 0.15;
-const nwtTax = 0.05;
-const novaScotiaTax = 0.15;
-const nunavutTax = 0.05;
-const ontarioTax = 0.13;
-const peiTax = 0.15;
-const quebecTax = 0.14975;
-const saskatchewanTax = 0.11;
-const yukonTax = 0.05;
-
+const taxRates = {
+    AB: 0.05,
+    BC: 0.12,
+    MB: 0.12,
+    NB: 0.15,
+    NL: 0.15,
+    NT: 0.05,
+    NS: 0.15,
+    NU: 0.05,
+    ON: 0.13,
+    PE: 0.15,
+    QC: 0.14975,
+    SK: 0.11,
+    YT: 0.05
+}
 const importTax = 0.16; //for fun
 
-
-
-//PRODUCT API CALL
+//URL's for API Calls
 const url = `https://fakestoreapi.com/products/`;
 const fallbackURL = `https://deepblue.camosun.bc.ca/~c0180354/ics128/final/fakestoreapi.json`;
-
 const currencyURL = `https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd.json`;
 
-const callCurrencies = async () => {
-    try {
-        let response = await fetch(currencyURL);
-        let data = await response.json();
-        const { usd } = data;
-        currencyValues = {
-            cadValue: usd.cad,
-            usdValue: usd.usd,
-            eurValue: usd.eur,
-            gbpValue: usd.gbp,
-            audValue: usd.aud,
-        };
-        console.log(currencyValues);
-        $(`#dropdownFailMsg`).hide();
-    } catch (error) {
-        $(`#dropdownBtn`).hide();
-        $(`#dropdownFailMsg`).show();
-    }
-};
-
+//PRODUCT API CALL
 const callProducts = async () => {
     try {
         let responseURL = await fetch(url);
         let dataURL = await responseURL.json();
 
+        //creating objects from api call and pushing into array
         dataURL.forEach((product) => {
-            //creating objects from api call and pushing into array
             catalogProduct = new Catalog(
                 product.id,
                 product.title,
@@ -135,13 +117,13 @@ const callProducts = async () => {
             );
             catalogOfProducts.push(catalogProduct);
         });
-    } catch (error) {
+    } catch (error) { //if try fails, call the fallback API, and handle any errors that may occur from there
         try {
             let responseFallback = await fetch(fallbackURL);
             let fallbackData = await responseFallback.json();
 
+            //creating objects from fallback api call and pushing into array
             fallbackData.forEach((product) => {
-                //creating objects from api call and pushing into array
                 catalogProduct = new Catalog(
                     product.id,
                     product.title,
@@ -154,41 +136,59 @@ const callProducts = async () => {
                 );
                 catalogOfProducts.push(catalogProduct);
             });
-        } catch (fallbackError) {
-            console.error(`Fallback failed.`, fallbackError);
-        } finally {
-            if (catalogOfProducts.length === 0) {
-                $(`#featured`).hide();
-                $(`#new`).hide();
-                $(`#mens`).hide();
-                $(`#womens`).hide();
-                $(`#electronics`).hide();
-                $(`#accessories`).hide();
-                $(`#noItemsDiv`).html(
-                    `<h2>We're fresh out of stock! Please check back later.</h2>`
-                );
-            }
+        } catch (fallbackError) { //if this fails display a messsage
+            $(`#featured`).hide();
+            $(`#new`).hide();
+            $(`#mens`).hide();
+            $(`#womens`).hide();
+            $(`#electronics`).hide();
+            $(`#accessories`).hide();
+            $(`#noItemsDiv`).html(
+            `<h2>We're fresh out of stock! Please check back later.</h2>`
+        );
+        }
+    }
+    finally { //if both fails, display a message
+        if (catalogOfProducts.length === 0) {
+            $(`#featured`).hide();
+            $(`#new`).hide();
+            $(`#mens`).hide();
+            $(`#womens`).hide();
+            $(`#electronics`).hide();
+            $(`#accessories`).hide();
+            $(`#noItemsDiv`).html(
+                `<h2>We're fresh out of stock! Please check back later.</h2>`
+            );
         }
     }
 };
 
+//CURRENCY API CALL
+const callCurrencies = async () => {
+    try {
+        let response = await fetch(currencyURL);
+        let data = await response.json();
+        const { usd } = data;
+        currencyValues = {
+            cadValue: usd.cad,
+            usdValue: usd.usd,
+            eurValue: usd.eur
+        };
+        $(`#dropdownFailMsg`).hide();
+    } catch (error) { //if it fails, disable the button and display a message instead. (Fallback URLs I found didn't seem to work for this one)
+        $(`#dropdownBtn`).hide();
+        $(`#dropdownFailMsg`).show();
+    }
+};
+
 $(document).ready(function () { //document ready function
-    $(document).on(`click scroll`, function(event) { //closes navbar when user clicks outside of it or scrolls on the page
-        let isOpen = $(`.navbar-collapse`).hasClass(`show`);
-        let click = $(event.target);
-        if (isOpen === true && !click.hasClass(`navbar-toggler`)) {
-            $(`.navbar-toggler`).click();
-        }
-    })
-    $(`#checkoutBtn`).hide();
+    $(`#checkoutBtn`).hide(); //hiding buttons & table header until stuff is added to cart
     $(`#clearCartBtn`).hide();
     $(`#offcanvasTableFooter`).hide();
     $(`#offcanvasHeader`).hide();
+
     //calling functions in this order on page refresh to make sure everything loads correctly
     callProducts()
-        .then(() => {
-            console.log(catalogOfProducts); //testing purposes, delete this later!!!
-        })
         .then(() => {
             callCurrencies();
         })
@@ -215,32 +215,33 @@ $(document).ready(function () { //document ready function
         let product = catalogOfProducts.find( //finding the product within the array
             (item) => item.productID == productID
         );
+
         if (product) {
             let quantity = cartItems && cartItems[productID] ? cartItems[productID] : 0;
             product.productQuantity += quantity;
         }
+
         //code from the assignment instructions
         if (cartItems === null) {
             cartItems = {};
         }
+
         if (cartItems[productID] === undefined) {
             cartItems[productID] = 0;
         }
+
         cartItems[productID]++;
         set_cookie(`shopping_cart_items`, cartItems);
-        set_cookie(`tableHeaderPrepended`, true);
         let quantity = cartItems[productID];
         button.html(`<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Adding...`).attr(`disabled`, true); //button animation for adding to cart
-
-        //setting the values for the card popup
-        $(`#cartItemPopupImage`).attr(`src`, product.productImage);
+        $(`#cartItemPopupImage`).attr(`src`, product.productImage); //setting the values for the card popup
         $(`#cartItemPopupTitle`).html(product.productTitle);
         $(`#cartItemPopupPrice`).html(product.productPrice);
         $(`#cartItemPopupQty`).html(`Added to Cart! Qty (` + quantity + `)`);
-        subtotalCheckoutTable(selectedCurrency); //updating totals
+        subtotalCheckoutTable(selectedCurrency); //updating tables in offcanvas and checkout modal
         checkoutModal(selectedCurrency);
 
-        //adding a small delay so things don't happen so fast
+        //adding a small 2 second delay 
         setTimeout(function () {
             showCartItemPopup();
             button.html(`Add To Cart`).attr("disabled", false);
@@ -263,8 +264,6 @@ $(document).ready(function () { //document ready function
         $(`#checkoutBtn`).hide();
         $(`#offcanvasHeader`).hide(); //remove table header and footer
         $(`#offcanvasTableFooter`).hide();
-        set_cookie(`tableHeaderPrepended`, false); //reset cookies
-        set_cookie(`tableFooterAppended`, false);
         set_cookie(`shopping_cart_items`, {});
     });
 
@@ -280,6 +279,23 @@ $(document).ready(function () { //document ready function
     }
     updateCurrencyDropdown(); //calling the function
 
+    //depending on what country/province is selected, passing the selected province and updating the checkout modal with appropriate tax rate.
+    $(`#billingProvince`).on(`change`, function() {
+        let selectedProvince = $(this).val();
+        checkoutModal(selectedCurrency, selectedProvince);
+    });
+    $(`#shippingCountry`).on(`change`, function() {
+        let selectedCountry = $(this).val();
+        checkoutModal(selectedCurrency, selectedCountry);
+    });
+    $(`#shippingProvince`).on(`change`, function() {
+        let selectedProvince = $(this).val();
+        checkoutModal(selectedCurrency, selectedProvince);
+    });
+    $(`#billingCountry`).on(`change`, function() {
+        let selectedCountry = $(this).val();
+        checkoutModal(selectedCurrency, selectedCountry);
+    });
 });
 
 function updateCartCounter(cartItems = get_cookie(`shopping_cart_items`)) { //cart quantity counter on the button in nav
@@ -293,12 +309,7 @@ function updateCartCounter(cartItems = get_cookie(`shopping_cart_items`)) { //ca
 }
 
 function showCartItemPopup() { //div that pops up when an item is successfully added to cart
-    $(`#cartItemPopup`)
-        .fadeIn()
-        .css(`display`, `flex`)
-        .css(`justify-content`, `center`)
-        .css(`align-items`, `center`)
-        .css(`flex-direction`, `column`);
+    $(`#cartItemPopup`).fadeIn().css(`display`, `flex`).css(`justify-content`, `center`).css(`align-items`, `center`).css(`flex-direction`, `column`);
 }
 
 function displayCardInfo(selectedCurrency) { //displaying cards on the page 
@@ -343,12 +354,11 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
                         </div>
                     </div>
                     <div class="mb-3 ms-3">
-                    <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
-                </div>
+                        <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+                    </div>
                 </div>
             </div>
-      </div>
-  </div>`);
+        `);
     }
 
     //new arrivals section
@@ -388,12 +398,11 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
                         </div>
                     </div>
                     <div class="mb-3 ms-3">
-                    <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
-                </div>
+                        <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+                    </div>
                 </div>
             </div>
-      </div>
-  </div>`);
+        `);
     }
 
     //mens section
@@ -414,31 +423,30 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
             priceInSelectedCurrency = parseFloat(priceInSelectedCurrency).toFixed(2);
         }
         $(`#mensCardContainer`).append(`
-        <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
-        <div class="card h-100">
-            <div class="d-flex justify-content-between p-3">
-                <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+            <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
+                <div class="card h-100">
+                    <div class="d-flex justify-content-between p-3">
+                        <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+                    </div>
+                    <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
+                            <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
+                        </div>
+                        <div class="d-flex justify-content-end mb-3">
+                            <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
+                        </div>
+                    </div>
+                    <div class="mb-3 ms-3">
+                        <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+                    </div>
+                </div>
             </div>
-            <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
-                    <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
-                </div>
-                <div class="d-flex justify-content-end mb-3">
-                    <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
-                </div>
-            </div>
-            <div class="mb-3 ms-3">
-            <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
-        </div>
-        </div>
-    </div>
-</div>
-</div>`);
+        `);
     }
 
     //accessories section
@@ -459,31 +467,30 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
             priceInSelectedCurrency = parseFloat(priceInSelectedCurrency).toFixed(2);
         }
         $(`#accessoriesCardContainer`).append(`
-        <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
-        <div class="card h-100">
-            <div class="d-flex justify-content-between p-3">
-                <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+            <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
+                <div class="card h-100">
+                    <div class="d-flex justify-content-between p-3">
+                        <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+                    </div>
+                    <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
+                            <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
+                        </div>
+                        <div class="d-flex justify-content-end mb-3">
+                            <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
+                        </div>
+                    </div>
+                    <div class="mb-3 ms-3">
+                        <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+                    </div>
+                </div>
             </div>
-            <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
-                    <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
-                </div>
-                <div class="d-flex justify-content-end mb-3">
-                    <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
-                </div>
-            </div>
-            <div class="mb-3 ms-3">
-            <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
-        </div>
-        </div>
-    </div>
-</div>
-</div>`);
+        `);
     }
 
     //womens section
@@ -504,31 +511,30 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
             priceInSelectedCurrency = parseFloat(priceInSelectedCurrency).toFixed(2);
         }
         $(`#womensCardContainer`).append(`
-        <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
-        <div class="card h-100">
-            <div class="d-flex justify-content-between p-3">
-                <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+            <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
+                <div class="card h-100">
+                    <div class="d-flex justify-content-between p-3">
+                        <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+                    </div>
+                    <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
+                            <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
+                        </div>
+                        <div class="d-flex justify-content-end mb-3">
+                            <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
+                        </div>
+                    </div>
+                    <div class="mb-3 ms-3">
+                        <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+                    </div>
+                </div>
             </div>
-            <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
-                    <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
-                </div>
-                <div class="d-flex justify-content-end mb-3">
-                    <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
-                </div>
-            </div>
-            <div class="mb-3 ms-3">
-            <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
-        </div>
-        </div>
-    </div>
-</div>
-</div>`);
+        `);
     }
 
     //electronics section
@@ -549,35 +555,32 @@ function displayCardInfo(selectedCurrency) { //displaying cards on the page
             priceInSelectedCurrency = parseFloat(priceInSelectedCurrency).toFixed(2);
         }
         $(`#electronicsCardContainer`).append(`
-        <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
-        <div class="card h-100">
-            <div class="d-flex justify-content-between p-3">
-                <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+            <div class="col-sm-6 col-md-12 col-lg-4 mb-4 mb-lg-5">
+                <div class="card h-100">
+                    <div class="d-flex justify-content-between p-3">
+                        <p class="lead mb-0">${catalogOfProducts[i].title}</p>
+                    </div>
+                    <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
+                            <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
+                        </div>
+                        <div class="d-flex justify-content-end mb-3">
+                            <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
+                        </div>
+                    </div>
+                    <div class="mb-3 ms-3">
+                        <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
+                    </div>
+                </div>
             </div>
-            <img src="${catalogOfProducts[i].image}" class="card-img-top" alt="..." />
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <p class="small"><a href="#!" class="text-muted">${catalogOfProducts[i].category}</a></p>
-                    <p class="small"><span class="ratingColour">Rating: ${catalogOfProducts[i].rating.rate}/5</span></p>
-                </div>
-                <div class="d-flex justify-content-end mb-3">
-                    <h5 class="text-dark mb-0"><span class="priceColour">${currencySymbol}${priceInSelectedCurrency}</span></h5>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <p class="text-muted mb-0">${catalogOfProducts[i].description}</p>
-                </div>
-            </div>
-            <div class="mb-3 ms-3">
-            <button class="btn btn-dark addToCart" data-id="${catalogOfProducts[i].id}">Add To Cart</button>
-        </div>
-        </div>
-    </div>
-</div>
-</div>`);
+        `);
     }
 }
-
-
 
 $(`#offcanvasCart`).on(`click`, `button`, function () { //removing an item from the cart function
     cartItems = get_cookie(`shopping_cart_items`); //get the cookie
@@ -592,19 +595,19 @@ $(`#offcanvasCart`).on(`click`, `button`, function () { //removing an item from 
 function subtotalCheckoutTable(selectedCurrency) { //function to update the subtotal in the offcanvas table
     let currencySymbol = `$`; //setting the currency symbol to USD
     cartItems = get_cookie(`shopping_cart_items`); //grab cookie
+
     if (cartItems === null || cartItems === undefined) { //check if the cart is empty, if so, make an empty object
         cartItems = {};
     }
+
     $(`#offcanvasCart`).empty(); //clearing the table before appending a new item
+
     for (let productID in cartItems) { //iterating through the cart object
         if (cartItems.hasOwnProperty(productID)) { //if the cart object has the product id, assign it to product, 
             let product = catalogOfProducts.find((item) => item.productID == productID); //finding the item in the catalog of products, using an arrow testing function that will compare the productID property of each item in the catalogOfProducts array
-
             if (product) { //if the product exists
                 let quantity = cartItems[productID]; //getting the quantity of that product
                 let prodCost = product.productPrice; //getting the price of that product
-
-
                 if (selectedCurrency !== `USD`) { //if the currency is not USD, then check to see which selectedCurrency value was passed, and then calculate the appropriate cost from the currencyValues object
                     switch (selectedCurrency) {
                         case `CAD`:
@@ -636,19 +639,15 @@ function subtotalCheckoutTable(selectedCurrency) { //function to update the subt
             }
         }
     }
-
     //similar to above, but just for the footer of the table. nothing really different here except where it's getting displayed
     $(`#offcanvasTableFooter`).empty(); 
     let cartSubtotal = 0; //initially set the subtotal to 0
-
     for (let productID in cartItems) { //same as above, iterating through the cart
         if (cartItems.hasOwnProperty(productID)) {
             let product = catalogOfProducts.find((item) => item.productID == productID);
-
             if (product) {
                 let prodQuantity = cartItems[productID];
                 let prodCost = product.productPrice;
-
                 if (selectedCurrency !== `USD`) {
                     switch (selectedCurrency) {
                         case `CAD`:
@@ -666,7 +665,7 @@ function subtotalCheckoutTable(selectedCurrency) { //function to update the subt
             }
         }
     }
-    if (Object.keys(cartItems).length > 0) { //making sure the cart is not empty, and if it is, don't show the subtotal row
+    if (Object.keys(cartItems).length > 0) { //one thing different here, making sure the cart is not empty, and if it is, don't show the subtotal row
         let subtotalRow = `
             <tr>
                 <th colspan="4">Subtotal</td>
@@ -674,7 +673,8 @@ function subtotalCheckoutTable(selectedCurrency) { //function to update the subt
             </tr>`;
         $(`#offcanvasTableFooter`).show();
         $(`#offcanvasTableFooter`).append(subtotalRow);
-    } else {
+    } 
+    else {
         $(`#offcanvasHeader`).hide();
         $(`#emptyCart`).show();
         $(`#clearCartBtn`).hide();
@@ -683,22 +683,23 @@ function subtotalCheckoutTable(selectedCurrency) { //function to update the subt
     }
 }
 
-function checkoutModal(selectedCurrency) { //similar to the subtotalCheckoutTable, nothing really different here, except where the rows are appeneded
+function checkoutModal(selectedCurrency) { //similar to the subtotalCheckoutTable, nothing really different here, except where the rows are appeneded and the tax stuff
     cartItems = get_cookie(`shopping_cart_items`);
     let currencySymbol = `$`;
-    if (cartItems === null || cartItems === undefined) {
+    tax = 0.13;
+
+    if (cartItems === null || cartItems === undefined) { //if the object is empty, create an empty object
         cartItems = {};
     }
+
     $(`#checkoutTable`).empty();
     for (let productID in cartItems) {
         if (cartItems.hasOwnProperty(productID)) {
             let product = catalogOfProducts.find((item) => item.productID == productID);
-
             if (product) {
                 let itemQuantity = cartItems[productID];
                 let productCost = product.productPrice;
-
-                if (selectedCurrency !== `USD`) {
+                if (selectedCurrency !== `USD`) { //displaying currency symbol based on which currency was passed
                     switch (selectedCurrency) {
                         case `CAD`:
                             productCost *= currencyValues.cadValue;
@@ -730,12 +731,10 @@ function checkoutModal(selectedCurrency) { //similar to the subtotalCheckoutTabl
     let cartSubtotal = 0;
     for (let productID in cartItems) {
         if (cartItems.hasOwnProperty(productID)) {
-            let product = catalogOfProducts.find((item) => item.productID == productID
-            );
+            let product = catalogOfProducts.find((item) => item.productID == productID);
             if (product) {
                 let cartQuantity = cartItems[productID];
                 let cartCost = product.productPrice;
-
                 if (selectedCurrency !== `USD`) {
                     switch (selectedCurrency) {
                         case `CAD`:
@@ -747,26 +746,50 @@ function checkoutModal(selectedCurrency) { //similar to the subtotalCheckoutTabl
                             currencySymbol = `€`;
                             break;
                     }
-                    cartCost = parseFloat(cartCost).toFixed(2);
+                    cartCost = parseFloat(cartCost);
                 }
-                cartSubtotal += cartCost * cartQuantity;
-                cartSubtotal = parseFloat(cartSubtotal).toFixed(2);
+                cartSubtotal += (cartCost * cartQuantity);
             }
         }
+        
     }
-
+    cartSubtotal = parseFloat(cartSubtotal);
     if (Object.keys(cartItems).length > 0) {
-        let tax = 0.07 * cartSubtotal;
-        let grandTotal = cartSubtotal + tax + shipping;
-        grandTotal = parseFloat(grandTotal).toFixed(2);
+        let tax = 0.00;
+        let shippingCountry = $(`#shippingCountry`).val();
+        let billingCountry = $(`#billingCountry`).val();
+
+        if (shippingCountry === `CAD`) { //if the shipping country is canada,
+            let selectedProvince = $(`#shippingProvince`).val() || $(`#billingProvince`).val(); //get province
+            if (selectedProvince) { //if true
+                tax = taxRates[selectedProvince] || 0.00; //get the tax rate for that province, and if it doesn't exist, set it to 0.00
+            }
+
+        }
+        else if (shippingCountry === `USA` || billingCountry === `USA`) { //if the shipping or billing country is USA, set the tax to 16%
+            tax = importTax;
+        }
+        else if (billingCountry === `CAD`) { //if the billing country is canada, get the province and do the same as above
+            let selectedProvince = $(`#billingProvince`).val();
+            if (selectedProvince) {
+                tax = taxRates[selectedProvince] || 0.00;
+            }
+        }
+        tax = tax * cartSubtotal; //calculate tax
+        tax = parseFloat(tax);
+        let grandTotal = 0.00; //initialize grandtotal to 0.00
+        grandTotal = cartSubtotal + tax + shipping; //calculate grand total
+        grandTotal = parseFloat(grandTotal).toFixed(2); //round to 2 decimal places
+        tax = parseFloat(tax).toFixed(2); //round to 2 decimal places
+        //create the row and append to the footer of the table
         let grandtotalRow = `
             <tr>
                 <td scope="col" colspan="3">Subtotal</th>
-                <td scope="col">${currencySymbol}${cartSubtotal}</td>
+                <td scope="col">${currencySymbol}${cartSubtotal.toFixed(2)}</td>
             </tr>
             <tr>
                 <td scope="col" colspan="3">Tax</td>
-                <td scope="col">${currencySymbol}${tax.toFixed(2)}</td>
+                <td scope="col">${currencySymbol}${tax}</td>
             </tr>
             <tr>
                 <td scope="col" colspan="3">Shipping</td>

@@ -1,17 +1,18 @@
 //script purely for handling the validation of the checkout field... thought putting it on it's own was a smart thing to do since it's big
-
-//I decided to add two validation methods, one to check while the user is typing and give real time feedback, and another when the user clicks the submit button
-
+//i spent a whole week trying to break this, re-writing it etc. if i missed something, that's why haa.
 //regex
+
+//the submission instructions said to allow a 3 or 4 digit CVV, but the Submission API only accepts 3, so I'm going to assume that it's only supposed to be 3.
+
 const regFirstName = /^[a-zA-Z]+$/;
 const regLastName = /^[a-zA-Z-]+$/;
 const regAddress = /^(\d+)\s+([\w\s]+?)\s+(?:(?:(?:Avenue|Ave|Street|St|Road|Rd|Lane|Ln|Drive|Dr|Boulevard|Blvd|Court|Ct|Place|Pl|Square|Sq|Terrace|Ter|Trail|Trl|Highway|Hwy)\b)|([\w\s]+))$/i;
-const regSecondAddress = /(?:\b(?:2nd|Second|Basement|Suite|Apt|Apartment|Unit|Room|Studio)\b)\s*([\w\s]+)/i; //for optional field
+const regSecondAddress = /(?:\b(?:2nd|Second|Basement|Suite|Apt|Apartment|Unit|Room|Studio|Bsmt)\b)\s*(\d+)?\s*([\w\s]+)/i;
 const regCity =  /^[a-zA-Z]+(?:\s[a-zA-Z]+)*$/;
 const regEmail = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
 const canRegPostal = /^[ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z][ -]?\d[ABCEGHJ-NPRSTV-Z]\d$/i;
 const usaRegPostal = /^\d{5}$/;
-const regPhone = /^(\d{3}[- ]?\d{3}[- ]?\d{4}|\(\d{3}\)\s*\d{3}[- ]?\d{4}|\d{3}[- ]?\d{7})$/;
+const regPhone = /^(1[- ]?)?(\d{3}[- ]?\d{3}[- ]?\d{4}|\(\d{3}\)\s*\d{3}[- ]?\d{4}|\d{3}[- ]?\d{7})$/
 const cvcRegex = /^\d{3}$/; 
 const ccRegex = /^(\d{4}\s\d{4}\s\d{4}\s\d{4}|\d{16})$/;
 const monthRegex = /^(0[1-9]|1[0-2]|10|11|12)$/;
@@ -20,6 +21,7 @@ const currentYear = new Date().getFullYear(); //get current date for credit card
 const currentMonth = new Date().getMonth() + 1;
 const submission = {};
 
+//billing variables
 let billingFirstName;
 let billingLastName;
 let billingAddress;
@@ -35,6 +37,7 @@ let billingCcMonth;
 let billingCcYear;
 let billingCvc;
 
+//shipping variables
 let shippingFirstName;
 let shippingLastName;
 let shippingAddress;
@@ -46,144 +49,110 @@ let shippingPostalCode;
 let shippingPhone;
 let shippingEmail;
 
+//booleans
 let isBillingFormValid = false;
 let isShippingFormValid = false;
 let isCreditCardFormValid = false;
+
+//total variables
 let grandTotal;
 let currency;
+
+//for API call later
 let form_data = new FormData();
 
-const submitFunction = async(form_data) => {
+const submitFunction = async(form_data) => { //submission API
     try {
-        let response = await fetch(`https://deepblue.camosun.bc.ca/~c0180354/ics128/final/`,
-        { method: `POST`,
-        cache: `no-cache`,
-        body: form_data
-    }); 
-    if (response.ok) {
-        const data = await response.json();
-        console.log(data);
-    }
+        let response = await fetch(`https://deepblue.camosun.bc.ca/~c0180354/ics128/final/`,{ 
+            method: `POST`,
+            cache: `no-cache`,
+            body: form_data
+        });
+
+        if (response.ok) {
+            $(`#checkoutModal`).modal(`hide`); //show successful modal
+            $(`#successModal`).modal(`show`);
+            $(`#submitOrderBtn`).html(`Submit Order`); //reset the button animation
+        }
     }
     catch(error) {
-        console.error(`${error}`)
+        throw new Error(`Something went wrong... please try again later.`);
     }
 }
 
-$(document).ready(function() {
-
+$(document).ready(function() { 
     $(`#submitOrderBtn`).hide(); //initially hiding these buttons
     $(`#backBtn`).hide();
     $(`#submitOrderError`).hide();
 
-        // continue/back button logic in the checkout modal
-        $(`#continueBtn`).click(function() {
-            let currentLink = $(`.nav-link.active`);
-            let nextLink = currentLink.closest(`li.nav-item`).next().find(`.nav-link`);
-            let targetTab = $(nextLink.attr(`data-bs-target`));
-    
-            if (nextLink.attr(`id`) === `pills-confirmation-tab`) {
-                $(`#submitOrderBtn`).show();
-                $(`#continueBtn`).hide();
-            }
-    
-            currentLink.removeClass(`active`);
-            nextLink.addClass(`active`);
-            $(`.tab-pane`).removeClass(`show active`);
-            targetTab.addClass(`show active`);
-            nextLink.trigger(`click`);
-        });
-    
-        $(`#backBtn`).click(function() {
-            let currentLink = $(`.nav-link.active`);
-            let prevLink = currentLink.closest(`li.nav-item`).prev().find(`.nav-link`);
-            let targetTab = $(prevLink.attr(`data-bs-target`));
-    
-            if (prevLink.attr(`id`) === `pills-billing-tab`) {
-                $(`#backBtn`).hide();
-            }
-            else {
-                $(`#backBtn`).show();
-            }
-    
-            currentLink.removeClass(`active`);
-            prevLink.addClass(`active`);
-            $(`.tab-pane`).removeClass(`show active`);
-            targetTab.addClass(`show active`);
-            prevLink.trigger(`click`);
-        });
-    
-        //if the same information as billing checkbox is checked, hides the shipping form and assigns the info into the shipping variables.
-        $(`#sameInfo`).click(function() {
-            if ($(`#sameInfo`).prop(`checked`)) {
-                $(`#shippingForm`).hide();
-                shippingFirstName = billingFirstName;
-                shippingLastName = billingLastName;
-                shippingAddress = billingAddress;
-                shippingAddress2 = billingAddress2;
-                shippingCountry = billingCountry;
-                shippingProvince = billingProvince;
-                shippingCity = billingCity;
-                shippingPostalCode = billingPostalCode;
-                shippingPhone = billingPhone;
-                shippingEmail = billingEmail;
-                isShippingFormValid = true;
-            }
-            else {
-                shippingFirstName = ``;
-                shippingLastName = ``;
-                shippingAddress = ``;
-                shippingAddress2 = ``;
-                shippingCountry = ``;
-                shippingProvince = ``;
-                shippingCity = ``;
-                shippingPostalCode = ``;
-                shippingPhone = ``;
-                shippingEmail = ``;
-                isShippingFormValid = false;
-                $(`#shippingForm`).show();
-            }
-        });
-    
-        //create a delay function to simulate submitting
-        function delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
+    // continue/back button logic in the checkout modal
+    $(`#continueBtn`).click(function() {
+        let currentLink = $(`.nav-link.active`);
+        let nextLink = currentLink.closest(`li.nav-item`).next().find(`.nav-link`);
+        let targetTab = $(nextLink.attr(`data-bs-target`));
+
+        if (nextLink.attr(`id`) === `pills-confirmation-tab`) {
+            $(`#submitOrderBtn`).show();
+            $(`#continueBtn`).hide();
         }
+
+        currentLink.removeClass(`active`);
+        nextLink.addClass(`active`);
+        $(`.tab-pane`).removeClass(`show active`);
+        targetTab.addClass(`show active`);
+        nextLink.trigger(`click`);
+    });
     
-        //submit orderbutton handler
-        $(`#submitOrderBtn`).click(function() {
-            $(`#submitOrderError`).hide(); //hide error message if it's showing
-/*             billingProvince = $(`#billingProvince`).val();
-            shippingProvince = billingProvince; */
-            setTimeout(function() {
-                billingValidate();
-                shippingValidate();
-                validateCreditCard();
-            }, 2000)
+    $(`#backBtn`).click(function() {
+        let currentLink = $(`.nav-link.active`);
+        let prevLink = currentLink.closest(`li.nav-item`).prev().find(`.nav-link`);
+        let targetTab = $(prevLink.attr(`data-bs-target`));
+
+        if (prevLink.attr(`id`) === `pills-billing-tab`) {
+            $(`#backBtn`).hide();
+        }
+        else {
+            $(`#backBtn`).show();
+        }
+
+        currentLink.removeClass(`active`);
+        prevLink.addClass(`active`);
+        $(`.tab-pane`).removeClass(`show active`);
+        targetTab.addClass(`show active`);
+        prevLink.trigger(`click`);
+    });
     
-            //close modal and display success message if all forms are valid
-            if (isShippingFormValid && isCreditCardFormValid && isBillingFormValid) {
-                $(`#submitOrderBtn`).html(`<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...`);
-                delay(2000).then(() => { //creating a delay to simulate submission
-                    billingCcNumber = billingCcNumber.replace(/\s/g, ``);
-                    if (!shippingPhone.match(billingPhone)) {
-                        shippingPhone = shippingPhone.replace(/\s/g, ``);
-                    }
-                    billingPhone = billingPhone.replace(/\s/g, ``);
-                    submission.card_number = billingCcNumber;
+    //create a delay function to simulate submitting
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    //submit orderbutton handler/JS object building
+    $(`#submitOrderBtn`).click(function() {
+        $(`#submitOrderBtn`).html(`<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...`); //show animation
+        $(`#submitOrderError`).hide(); //hide error message if it's showing
+        setTimeout(function() { //creating a delay to simulate submission
+            billingValidate(); //validate the 3 forms one last time before submission incase a field was missed
+            shippingValidate();
+            validateCreditCard();
+
+            if (isShippingFormValid && isCreditCardFormValid && isBillingFormValid) { //if all 3 are valid
+                delay(2000).then(() => { //creating a delay to simulate submission 
+                    billingCcNumber = billingCcNumber.replace(/\s/g, ``); //stripping spaces
+                    billingPhone = billingPhone.replace(/\s/g, ``); //strip spaces
+                    submission.card_number = billingCcNumber; //building the JS object
                     submission.expiry_month = billingCcMonth; 
                     submission.expiry_year = billingCcYear;
                     submission.security_code = billingCvc;
-                    grandTotal = $(`#grandTotal`).text();
+                    grandTotal = $(`#grandTotal`).text(); //getting the value from the table, stripping the $ and converting it to fixed 2 decimal places
                     grandTotal =  parseFloat(grandTotal.replace(/[^\d.-]/g, ``));
                     grandTotal = grandTotal.toFixed(2);
                     submission.amount = grandTotal;
-                    currency = $(`#currencyDropdown .dropdown-item.active`).data(`currency`);
-                    currency = currency.toLowerCase();
-                    submission.currency = currency;
-                    billingCountry = billingCountry.slice(0,-1);
-                    shippingCountry = shippingCountry.slice(0,-1);
-                    let newBillingObj = {
+                    currency = $(`#currencyDropdown .dropdown-item.active`).data(`currency`); //getting the selected currency
+                    currency = currency.toLowerCase(); //converting to lowercase
+                    submission.currency = currency; 
+                    billingCountry = billingCountry.slice(0,-1); //removing the last character from the country value
+                    let newBillingObj = { //billing JS object
                         first_name: billingFirstName,
                         last_name: billingLastName,
                         address_1: billingAddress,
@@ -195,77 +164,133 @@ $(document).ready(function() {
                         phone: billingPhone,
                         email: billingEmail
                     }
-                    let newShippingObj = {
-                        first_name: shippingFirstName,
-                        last_name: shippingLastName,
-                        address_1: shippingAddress,
-                        address_2: shippingAddress2,
-                        city: shippingCity,
-                        province: shippingProvince,
-                        country: shippingCountry,
-                        postal: shippingPostalCode,
-                        phone: shippingPhone,
-                        email: shippingEmail
-                    }
                     submission.billing = newBillingObj;
-                    submission.shipping = newShippingObj;
-                    form_data.append(`submission`, JSON.stringify(submission));
-                    console.log(submission);
-                    for (let pair of form_data.entries()) {
-                        console.log(pair[0] + ': ' + pair[1]);
-                    }
-                    submitFunction(form_data);
 
-
-                    $(`#checkoutModal`).modal(`hide`);
-                    $(`#successModal`).modal(`show`);
-                    $(`#submitOrderBtn`).html(`Submit Order`);
-                    cartItems = get_cookie(`shopping_cart_items`);
-                    for (let productID in cartItems) {
-                        if (cartItems.hasOwnProperty(productID)) {
-                            delete cartItems[productID];
+                    if ($(`#sameInfo`).prop(`checked`)) { //if the same info as billing checkbox is checked, then assign the billing object to the shipping object
+                        shippingFirstName = $(`#billingFirstName`).val();
+                        shippingLastName = $(`#billingLastName`).val();
+                        shippingAddress = $(`#billingAddress`).val();
+                        shippingAddress2 = $(`#billingSecondAddress`).val();
+                        shippingCountry = $(`#billingCountry`).val();
+                        shippingCountry = shippingCountry.slice(0,-1);
+                        shippingProvince = $(`#billingProvince`).val();
+                        shippingCity = $(`#billingCity`).val();
+                        shippingPostalCode = $(`#billingZip`).val();
+                        shippingPhone = $(`#billingPhone`).val();
+                        shippingPhone = billingPhone.replace(/\s/g, ``);
+                        shippingEmail = $(`#billingEmail`).val();
+                        let newShippingObj = { //shipping JS object
+                            first_name: shippingFirstName,
+                            last_name: shippingLastName,
+                            address_1: shippingAddress,
+                            address_2: shippingAddress2,
+                            city: shippingCity,
+                            province: shippingProvince,
+                            country: shippingCountry,
+                            postal: shippingPostalCode,
+                            phone: shippingPhone,
+                            email: shippingEmail
                         }
+                        submission.shipping = newShippingObj;
                     }
-                    set_cookie(`shopping_cart_items`, cartItems);
-                    updateCartCounter(selectedCurrency);
-                    subtotalCheckoutTable(selectedCurrency);
-                    checkoutModal(selectedCurrency);
-                    console.log(cartItems);
-                }).catch((error) => {
-                    $(`#submitOrderError`).html(error);
+                    else {
+                        shippingCountry = shippingCountry.slice(0,-1);
+                        billingPhone = billingPhone.replace(/\s/g, ``);
+                        let newShippingObj = { //shipping JS object
+                            first_name: shippingFirstName,
+                            last_name: shippingLastName,
+                            address_1: shippingAddress,
+                            address_2: shippingAddress2,
+                            city: shippingCity,
+                            province: shippingProvince,
+                            country: shippingCountry,
+                            postal: shippingPostalCode,
+                            phone: shippingPhone,
+                            email: shippingEmail
+                        }
+                        submission.shipping = newShippingObj;
+                    }
+                    form_data.append(`submission`, JSON.stringify(submission)); 
+                    try {
+                        submitFunction(form_data).then(() =>{  //trying to submit the form data
+                            cartItems = get_cookie(`shopping_cart_items`); //if successful, then remove all items from cart and update counter/tables
+                            for (let productID in cartItems) {
+                                if (cartItems.hasOwnProperty(productID)) {
+                                    delete cartItems[productID];
+                                }
+                            }
+                            set_cookie(`shopping_cart_items`, cartItems); //update cookie and checkout tables
+                            updateCartCounter(selectedCurrency);
+                            subtotalCheckoutTable(selectedCurrency);
+                            checkoutModal(selectedCurrency);
+                        }).catch((error) => { //handles any error that might occur during submitFunction call
+                            $(`#submitOrderError`).html(error).css(`color`, `red`).css(`text-align`, `center`);
+                            $(`#submitOrderError`).show();
+                            $(`#submitOrderBtn`).html(`Submit Order`);
+                        })
+                    }
+                    catch (error) { //catches any error that might occur during the try
+                        $(`#submitOrderError`).html(`Please try again`).css(`color`, `red`).css(`text-align`, `center`);
+                        $(`#submitOrderError`).show();
+                      }
+                    }, 2000);
+                  }
+                  else { //if any of the forms are invalid, show error.
                     $(`#submitOrderBtn`).html(`Submit Order`);
-                });
-            }
-            else {
-                $(`#submitOrderBtn`).html(`<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...`);
-                delay(2000).then(() => {
                     $(`#submitOrderError`).show();
-                    $(`#submitOrderBtn`).html(`Submit Order`);
-                }).catch(error => {
-                    $(`#submitOrderError`).html(error);
-                    $(`#submitOrderBtn`).html(`Submit Order`);
-                });
-            }
+                  }
+                }, 2000);
+
+        $(`#closeSuccessMsg`).click(function() {
+            window.scrollTo(0,0) //setting a time out when closing the modal to refresh page and take you to the top of the page
+            setTimeout(function() {
+                $(`#offcanvasClose`).click(); //close the modal
+                location.reload();
+            }, 500);
         });
+    });
+
+    $(`#sameInfo`).click(function() { //if same information button is clicked, toggle the visibility of shipping form
+        $(`#shippingForm`).toggle();
+    });
     
-
-    //FIRST VALIDATION METHOD: VALIDATING ON BUTTON CLICK
-
-    //functions to validate fields on submit order button click
+    //functions to validate fields on submit order click
     function billingValidate() {
-        //getting values from inputs
-        billingFirstName = $(`#billingFirstName`).val();
-        billingLastName = $(`#billingLastName`).val();
-        billingAddress = $(`#billingAddress`).val();
-        billingCountry = $(`#billingCountry`).val();
-        billingProvince = $(`#billingProvince`).val();
-        billingCity = $(`#billingCity`).val();
-        billingPostalCode = $(`#billingZip`).val();
-        billingPhone = $(`#billingPhone`).val();
-        billingEmail = $(`#billingEmail`).val();
+        billingFirstNameValidate();
+        billingLastNameValidate();
+        billingAddressValidate();
+        billingCountryValidate();
+        billingProvinceValidate();
+        billingCityValidate();
+        billingPostalValidate();
+        billingPhoneValidate();
+        billingEmailValidate();
+    }
 
+    function shippingValidate() {
+        shippingFirstNameValidate();
+        shippingLastNameValidate();
+        shippingAddressValidate();
+        shippingCountryValidate();
+        shippingProvinceValidate();
+        shippingCityValidate();
+        shippingPostalValidate();
+        shippingPhoneValidate();
+        shippingEmailValidate();
+    }
+
+    function validateCreditCard() {
+        validateCreditCardNumber();
+        validateCreditExpiry();
+        validateCVC();
+    }
+
+    //functions to validate individual fields (all are the same unless commented otherwise)
+    //first name
+    function billingFirstNameValidate() {
+        //getting values from input
+        billingFirstName = $(`#billingFirstName`).val();
         //going through and checking if fields are either empty, or match the regex, and display feedback appropriately
-        //first name
         if (billingFirstName === ``) {
             $(`#billingFirstName`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#billingFirstName`).siblings(`.invalid-feedback`).text(`Please enter your first name`);
@@ -277,10 +302,14 @@ $(document).ready(function() {
         }
         else {
             $(`#billingFirstName`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#billingFirstName`).siblings(`.invalid-feedback`).text(`Please enter a valid first name (No numbers or spaces)`)
             isBillingFormValid = false;
         }
+    }
 
-        //last name
+    //last name
+    function billingLastNameValidate() {
+        billingLastName = $(`#billingLastName`).val();
         if (billingLastName === ``) {
             $(`#billingLastName`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#billingLastName`).siblings(`.invalid-feedback`).text(`Please enter your last name`);
@@ -292,12 +321,15 @@ $(document).ready(function() {
         }
         else {
             $(`#billingLastName`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#billingLastName`).siblings(`.invalid-feedback`).text(`Please enter a valid last name (No numbers or spaces)`);
             isBillingFormValid = false;
         }
-
+    }
+    function billingAddressValidate() {
+        billingAddress = $(`#billingAddress`).val();
         //address
         if (billingAddress === ``) {
-            $(`#billingAddress`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
+            $(`#billingAddress`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
             $(`#billingAddress`).siblings(`.invalid-feedback`).text(`Please enter your address`);
             isBillingFormValid = false;
         }
@@ -307,30 +339,65 @@ $(document).ready(function() {
         }
         else {
             $(`#billingAddress`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#billingAddress`).siblings(`.invalid-feedback`).text(`Invalid address (1234 Main street...)`)
             isBillingFormValid = false;
         }
+    }
 
-        //country
-        if (billingCountry === null) {
-            $(`#billingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(`#billingCountry`).siblings(`.invalid-feedback`).text(`Please select a country`);
-            isBillingFormValid = false;
+    function billingSecondAddressValidate() {
+        billingAddress2 = $(`#billingSecondAddress`).val();
+        //address
+        if (billingAddress2 === ``) {
+            $(`#billingSecondAddress`).removeClass(`is-invalid`).removeClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+            isBillingFormValid = true;
+        }
+        else if (billingAddress2.match(regSecondAddress)) {
+            $(`#billingSecondAddress`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+            isBillingFormValid = true;
         }
         else {
-            if (billingCountry === `CAD` && billingPostalCode.match(canRegPostal)) {
+            $(`#billingSecondAddress`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
+            $(`#billingSecondAddress`).siblings(`.invalid-feedback`).text(`Please enter a valid second address (Apt 123, Basement suite...)`);
+            isBillingFormValid = false;
+        }
+    }
+
+    //country
+    function billingCountryValidate() {
+        billingCountry = $(`#billingCountry`).val();
+        billingPostalCode = $(`#billingZip`).val();
+        if (billingCountry === null) {
+            $(`#billingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#billingCountry`).siblings(`.invalid-feedback`).text(`Please select your country`);
+            isBillingFormValid = false;
+        }
+        else if (billingCountry === `CAD` && billingPostalCode !== ``) { //to prevent message being displayed before user types a postal code in
+            if (billingPostalCode.match(canRegPostal)) {
+                $(`#billingCountry`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+                isBillingFormValid = true;
+            } 
+            else {
+                $(`#billingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#billingCountry`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
+                isBillingFormValid = false;
+            }
+        }
+        else if (billingCountry === 'USA' && billingPostalCode !== ``) {
+            if (billingPostalCode.match(usaRegPostal)) {
                 $(`#billingCountry`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
                 isBillingFormValid = true;
             }
             else {
-                $(`#billingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-                $(`#billingCountry`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
-                $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-                $(`#billingZip`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
+                $(`#billingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#billingCountry`).siblings(`.invalid-feedback`).text(`Country/Zip mismatch`);
                 isBillingFormValid = false;
             }
         }
+    }
 
-        //province/state
+    //province
+    function billingProvinceValidate() {
+        billingProvince = $(`#billingProvince`).val();
         if (billingProvince === null) {
             if (billingCountry === `CAD`) {
                 $(`#billingProvince`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
@@ -347,8 +414,11 @@ $(document).ready(function() {
             $(`#billingProvince`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
             isBillingFormValid = true;
         }
+    }
 
-        //city
+    //city
+    function billingCityValidate() {
+        billingCity = $(`#billingCity`).val();
         if (billingCity === ``) {
             $(`#billingCity`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#billingCity`).siblings(`.invalid-feedback`).text(`Please enter your city`);
@@ -360,29 +430,49 @@ $(document).ready(function() {
         }
         else {
             $(`#billingCity`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#billingCity`).siblings(`.invalid-feedback`).text(`Please enter a valid city (Victoria, Los Angeles...)`);
             isBillingFormValid = false;
         }
+    }
 
-        //postal/zip
-        if (billingPostalCode === ``) {
-            $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(`#billingZip`).siblings(`.invalid-feedback`).text(`Please enter your postal code`);
-            isBillingFormValid = false;
-        }
-        else 
-            if (billingCountry === `CAD` && billingPostalCode.match(canRegPostal)){
+    //postal code
+    function billingPostalValidate() {
+        billingPostalCode = $(`#billingZip`).val();
+        billingCountry = $(`#billingCountry`).val();
+        if (billingCountry === `CAD`) { //checking which country was selected and displaying appropriate feedback
+            if (billingPostalCode.match(canRegPostal)) {
                 $(`#billingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+                $(`#shippingCountry`).siblings(`.invalid-feedback`).text(`Please enter a valid postal code`);
                 isBillingFormValid = true;
-            }
-            else if (billingCountry === `USA` && billingPostalCode.match(usaRegPostal)) {
-                $(`#billingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-                isBillingFormValid = true;
-            }
-            else {
+            } else {
                 $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#billingZip`).siblings(`.invalid-feedback`).text(`Please enter a valid postal code`);
                 isBillingFormValid = false;
             }
+            
+        } else if (billingCountry === `USA`) {
+            if (billingPostalCode.match(usaRegPostal)) {
+                $(`#billingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();  
+                isBillingFormValid = true;            
+            } else {
+                $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#billingZip`).siblings(`.invalid-feedback`).text(`Please enter a valid zip code`);
+                isBillingForrmValid = false;
+            }
+        } else if (billingCountry === null) {
+            $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#billingZip`).siblings(`.invalid-feedback`).text(`Please select a country`);
+            isBillingFormValid = false;
+        } else {
+            $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#billingZip`).siblings(`.invalid-feedback`).text(`Please enter a valid zip code`);
+            isBillingFormValid = false;
+        }
+    }
 
+    //phone number
+    function billingPhoneValidate() {
+        billingPhone = $(`#billingPhone`).val();
         //phone
         if (billingPhone === ``) {
             $(`#billingPhone`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
@@ -394,10 +484,15 @@ $(document).ready(function() {
             isBillingFormValid = true;
         }
         else {
-            $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#billingPhone`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#billingPhone`).siblings(`.invalid-feedback`).text(`Please enter a valid phone number (1-234-567-8964)`);
             isBillingFormValid = false;
         }
+    }
 
+    //email
+    function billingEmailValidate() {
+        billingEmail = $(`#billingEmail`).val();
         //email
         if (billingEmail === ``) {
             $(`#billingEmail`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
@@ -410,26 +505,21 @@ $(document).ready(function() {
         }
         else {
             $(`#billingEmail`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#billingEmail`).siblings(`.invalid-feedback`).text(`Please enter a valid email (someone@someone.com)`);
             isBillingFormValid = false;
         }
     }
 
-    //shipping form validation (same as above, copy pasted and changed the variables to be appropriate)
-    function shippingValidate() {
-        //getting values from inputs, exact same as above
-        if (!$(`#sameInfo`).prop(`checked`)) {
+    //shipping forms (exact same as billing, only thing different is variable names and the checkbox)
+    //first name
+    function shippingFirstNameValidate() {
+        if (!$(`#sameInfo`).prop(`checked`)) { //this checks if the button is clicked, and if so it assigns the shipping variables to the billing variables
             shippingFirstName = $(`#shippingFirstName`).val();
-            shippingLastName = $(`#shippingLastName`).val();
-            shippingAddress = $(`#shippingAddress`).val();
-            shippingCountry = $(`#shippingCountry`).val();
-            shippingProvince = $(`#shippingProvince`).val();
-            shippingCity = $(`#shippingCity`).val();
-        shippingPostalCode = $(`#shippingZip`).val();
-            shippingPhone = $(`#shippingPhone`).val();
-            shippingEmail = $(`#shippingEmail`).val();
         }
-        //going through and checking if fields are either empty, or match the regex.
-        //first name
+        else {
+            shippingFirstName = $(`#billingFirstName`).val();
+        }
+
         if (shippingFirstName === ``) {
             $(`#shippingFirstName`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#shippingFirstName`).siblings(`.invalid-feedback`).text(`Please enter your first name`);
@@ -441,9 +531,19 @@ $(document).ready(function() {
         }
         else {
             $(`#shippingFirstName`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#shippingFirstName`).siblings(`.invalid-feedback`).text(`Please enter a valid first name (No numbers or spaces)`)
             isShippingFormValid = false;
         }
-
+    }
+    
+    //first name
+    function shippingLastNameValidate() {
+        if (!$(`#sameInfo`).prop(`checked`)) { 
+            shippingLastName = $(`#shippingLastName`).val();
+        }
+        else {
+            shippingLastName = $(`#billingLastName`).val();
+        }
         //last name
         if (shippingLastName === ``) {
             $(`#shippingLastName`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
@@ -456,9 +556,19 @@ $(document).ready(function() {
         }
         else {
             $(`#shippingLastName`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#shippingLastName`).siblings(`.invalid-feedback`).text(`Please enter a valid last name (No numbers or spaces)`);
             isShippingFormValid = false;
         }
+    }
 
+    //address
+    function shippingAddressValidate() {
+        if (!$(`#sameInfo`).prop(`checked`)) {
+            shippingAddress = $(`#shippingAddress`).val();
+        }
+        else {
+            shippingAddress = $(`#billingAddress`).val();
+        }
         //address
         if (shippingAddress === ``) {
             $(`#shippingAddress`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
@@ -471,31 +581,79 @@ $(document).ready(function() {
         }
         else {
             $(`#shippingAddress`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-        }
-
-        //country
-        if (shippingCountry === null) {
-            $(`#shippingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(`#shippingCountry`).siblings(`.invalid-feedback`).text(`Please select a country`);
+            $(`#shippingAddress`).siblings(`.invalid-feedback`).text(`Invalid address (1234 Main street...)`)
             isShippingFormValid = false;
         }
+    }
+
+    //second address (optional field)
+    function shippingSecondAddressValidate() {
+        if (!$(`#sameInfo`).prop(`checked`)) {
+            shippingAddress2 = $(`#shippingSecondAddress`).val();
+        }
         else {
-            if (shippingCountry === `CAD` && shippingPostalCode.match(canRegPostal)) {
+            shippingAddress2 = $(`#shippingSecondAddress`).val();
+        }
+
+        if (shippingAddress2 === ``) {
+            $(`#shippingSecondAddress`).removeClass(`is-invalid`).removeClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+            isShippingFormValid = true;
+        }
+        else if (shippingAddress2.match(regSecondAddress)) {
+            $(`#shippingSecondAddress`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+            isShippingFormValid = true;
+        }
+        else {
+            $(`#shippingSecondAddress`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
+            $(`#shippingSecondAddress`).siblings(`.invalid-feedback`).text(`Please enter a valid second address (Apt 123, Basement suite...)`);
+            isShuppingFormValid = false;
+        }
+    }
+
+    //country
+    function shippingCountryValidate() {
+        if (!$(`#sameInfo`).prop(`checked`)) { //if the checkbox isnt selected, then get the values from the shipping form. elsewhere assigns the info from the billing form if it's clicked
+            shippingCountry = $(`#shippingCountry`).val();
+        }
+        else {
+            shippingCountry = $(`#billingCountry`).val();
+        }
+        
+        shippingPostalCode = $(`#shippingZip`).val();
+        if (shippingCountry === null) {
+            $(`#shippingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#shippingCountry`).siblings(`.invalid-feedback`).text(`Please select your country`);
+            isShippingFormValid = false;
+        }
+        else if (shippingCountry === `CAD` && shippingPostalCode !== ``) { //to prevent message being displayed before user types a postal code in
+            if (shippingPostalCode.match(canRegPostal)) {
+                $(`#shippingCountry`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+                isShippingFormValid = true;
+            } 
+            else {
+                $(`#shippingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#shippingCountry`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
+                isShippingFormValid = false;
+            }
+        }
+        else if (shippingCountry === 'USA' && shippingPostalCode !== ``) {
+            if (shippingPostalCode.match(usaRegPostal)) {
                 $(`#shippingCountry`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
                 isShippingFormValid = true;
             }
             else {
-                $(`#shippingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-                $(`#shippingCountry`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
-                $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-                $(`#shippingZip`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
+                $(`#shippingCountry`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#shippingCountry`).siblings(`.invalid-feedback`).text(`Country/Zip mismatch`);
                 isShippingFormValid = false;
             }
         }
+    }
 
-        //province/state
+    //province
+    function shippingProvinceValidate() {
+        shippingProvince = $(`#shippingProvince`).val();
         if (shippingProvince === null) {
-            if (shippingCountry === `CAD`) {
+            if (shippingProvince === `CAD`) {
                 $(`#shippingProvince`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
                 $(`#shippingProvince`).siblings(`.invalid-feedback`).text(`Please select a province`);
                 isShippingFormValid = false;
@@ -507,8 +665,58 @@ $(document).ready(function() {
             }
         }
         else {
-            $(`#billingProvince`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+            $(`#shippingProvince`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
             isShippingFormValid = true;
+        }
+    }
+
+    //postal cvode
+    function shippingPostalValidate() {
+        if (!$(`#sameInfo`).prop(`checked`)) {
+            shippingPostalCode = $(`#shippingZip`).val();
+        }
+        else {
+            shippingPostalCode = $(`#billingZip`).val();
+        }
+        shippingCountry = $(`#shippingCountry`).val();
+        if (shippingCountry === `CAD`) { //checking which country was selected and displaying appropriate feedback
+            if (shippingPostalCode.match(canRegPostal)) {
+                $(`#shippingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
+                $(`#shippingCountry`).siblings(`.invalid-feedback`).text(`Please enter a valid postal code`);
+                isShippingFormValid = true;
+            } else {
+                $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#shippingZip`).siblings(`.invalid-feedback`).text(`Please enter a valid postal code`);
+                isShippingFormValid = false;
+            }
+            
+        } else if (shippingCountry === `USA`) {
+            if (shippingPostalCode.match(usaRegPostal)) {
+                $(`#shippingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();  
+                isShippingFormValid = true;            
+            } else {
+                $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+                $(`#shippingZip`).siblings(`.invalid-feedback`).text(`Please enter a valid zip code`);
+                isShippingFormValid = false;
+            }
+        } else if (shippingCountry === null) {
+            $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#shippingZip`).siblings(`.invalid-feedback`).text(`Please select a country`);
+            isShippingFormValid = false;
+        } else {
+            $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#shippingZip`).siblings(`.invalid-feedback`).text(`Please enter a valid zip code`);
+            isShippingFormValid = false;
+        }
+    }
+
+    //city
+    function shippingCityValidate() {
+        if (!$(`#sameInfo`).prop(`checked`)) { //if the checkbox isnt selected, then get the values from the shipping form. elsewhere assigns the info from the billing form if it's clicked
+            shippingCity = $(`#shippingCity`).val();
+        }
+        else {
+            shippingCity = $(`#billingCity`).val();
         }
 
         //city
@@ -523,24 +731,19 @@ $(document).ready(function() {
         }
         else {
             $(`#shippingCity`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#shippingCity`).siblings(`.invalid-feedback`).text(`Please enter a valid city (Victoria, Los Angeles...)`)
             isShippingFormValid = false;
         }
+    }
 
-        //postal/zip
-        if (shippingPostalCode === ``) {
-            $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(`#shippingZip`).siblings(`.invalid-feedback`).text(`Please enter your postal code`);
-            isShippingFormValid = false;
-        }
-        else if (shippingPostalCode.match(canRegPostal) || shippingPostalCode.match(usaRegPostal)) {
-            $(`#shippingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isShippingFormValid = true;
+    //phone
+    function shippingPhoneValidate() {
+        if (!$(`#sameInfo`).prop(`checked`)) { //if the checkbox isnt selected, then get the values from the shipping form. elsewhere assigns the info from the billing form if it's clicked
+            shippingPhone = $(`#shippingPhone`).val();
         }
         else {
-            $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            isShippingFormValid = false;
+            shippingPhone = $(`#billingPhone`).val();
         }
-
         //phone
         if (shippingPhone === ``) {
             $(`#shippingPhone`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
@@ -553,7 +756,18 @@ $(document).ready(function() {
         }
         else {
             $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#shippingPhone`).siblings(`.invalid-feedback`).text(`Please enter a valid phone number (1-234-567-8964)`);
             isShippingFormValid = false;
+        }
+    }
+
+    //email    
+    function shippingEmailValidate() {
+        if (!$(`#sameInfo`).prop(`checked`)) { //if the checkbox isnt selected, then get the values from the shipping form. elsewhere assigns the info from the billing form if it's clicked
+            shippingEmail = $(`#shippingEmail`).val();
+        }
+        else {
+            shippingEmail = $(`#billingEmail`).val();
         }
 
         //email
@@ -568,16 +782,15 @@ $(document).ready(function() {
         }
         else {
             $(`#shippingEmail`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#shippingEmail`).siblings(`.invalid-feedback`).text(`Please enter a valid email (someone@someone.com)`);
             isShippingFormValid = false;
         }
     }
 
-    //credit card validation
-    function validateCreditCard() {
+    //CREDIT CARD FORM
+    //credit card
+    function validateCreditCardNumber() {
         billingCcNumber = $(`#creditCardNumber`).val();
-        billingCcMonth = $(`#expirationMonth`).val();
-        billingCcYear = $(`#expirationYear`).val();
-        billingCvc = $(`#cvcNumber`).val();
         if (billingCcNumber === ``) {
             $(`#creditCardNumber`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
             $(`#creditCardNumber`).siblings(`.invalid-feedback`).text(`Please enter your credit card number`);
@@ -592,216 +805,122 @@ $(document).ready(function() {
             $(`#creditCardNumber`).siblings(`.invalid-feedback`).text(`Please enter a valid 16 digit credit card number`);
             isCreditCardFormValid = false;
         }
+    }
 
-        if (billingCcMonth === ``) {
-            $(`#expirationMonth`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(`#expirationMonth`).siblings(`.invalid-feedback`).text(`Please enter an expiration month`);
+    //card expiry
+    function validateCreditExpiry() {
+        billingCcMonth = $(`#expirationMonth`).val();
+        billingCcYear = $(`#expirationYear`).val(); 
+        const maxYear = currentYear + 10; // setting the max to 10 years ahead.
+        if (!billingCcMonth || !billingCcYear) { // Check if both fields are filled in
+            $(`#expirationMonth`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#expirationMonth`).siblings(`.invalid-feedback`).text(`Please enter a valid expiration date!`);
+            $(`#expirationYear`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#expirationYear`).siblings(`.invalid-feedback`).text(`Please enter a valid expiration date!`);
             isCreditCardFormValid = false;
         }
-        else if (billingCcMonth.match(yearRegex)) {
-            $(`#expirationMonth`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isCreditCardFormValid = true;
-        }
-        else if (billingCcMonth < currentMonth && billingCcYear < currentYear) { 
+        if (billingCcYear < currentYear) { // Check if the year is in the past
             $(`#expirationMonth`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
             $(`#expirationMonth`).siblings(`.invalid-feedback`).text(`Cannot be in the past!`);
+            $(`#expirationYear`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#expirationYear`).siblings(`.invalid-feedback`).text(`Please enter a valid expiration date!`);
             isCreditCardFormValid = false;
-        }
-
-
-        if (billingCcYear === ``) {
-            $(`#expirationYear`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(`#expirationYear`).siblings(`.invalid-feedback`).text(`Please enter an expiration year`);
+        } else if (billingCcYear > maxYear) { // Check if the year is too far ahead
+            $(`#expirationMonth`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#expirationMonth`).siblings(`.invalid-feedback`).text(`Too far ahead!`);
+            $(`#expirationYear`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#expirationYear`).siblings(`.invalid-feedback`).text(`Please enter a valid expiration date!`);
             isCreditCardFormValid = false;
-        }
-        else if (billingCcYear.match(monthRegex)) {
+        } else if (billingCcYear === currentYear && billingCcMonth < currentMonth) { // Check if the year is current and the month is in the past
+            $(`#expirationMonth`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#expirationMonth`).siblings(`.invalid-feedback`).text(`Cannot be in the past!`);
+            $(`#expirationYear`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#expirationYear`).siblings(`.invalid-feedback`).text(`Please enter a valid expiration date!`);
+            isCreditCardFormValid = false;
+        } else if (billingCcMonth.match(monthRegex) && billingCcYear.match(yearRegex)) { // All validations pass
+            $(`#expirationMonth`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
             $(`#expirationYear`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
             isCreditCardFormValid = true;
         }
-        else if (billingCcMonth < currentMonth && billingCcYear < currentYear) {
+        if (!billingCcMonth.match(monthRegex)) {
+            $(`#expirationMonth`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
+            $(`#expirationMonth`).siblings(`.invalid-feedback`).text(`Please enter a valid expiration date!`);
+            isCreditCardFormValid = false;
+        }
+        if (!billingCcYear.match(yearRegex)) {
             $(`#expirationYear`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(`#expirationYear`).siblings(`.invalid-feedback`).text(`Cannot be in the past!`);
+            $(`#expirationYear`).siblings(`.invalid-feedback`).text(`Please enter a valid expiration date!`);
             isCreditCardFormValid = false;
         }
+    }
 
-        if (billingCvc === ``) {
-            $(`#cvcNumber`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(`#cbcNumber`).siblings(`.invalid-feedback`).text(`Please enter your CVC number`);
-            isCreditCardFormValid = false;
-        }
-        else if (billingCvc.match(cvcRegex)) {
+    //cvc
+    function validateCVC() {
+        billingCvc = $(`#cvcNumber`).val();
+        if (billingCvc.match(cvcRegex)) {
             $(`#cvcNumber`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
             isCreditCardFormValid = true;
         }
         else {
             $(`#cvcNumber`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(`#cvcNumber`).siblings(`.invalid-feedback`).text(`Please enter a valid CVC number`);
+            $(`#cvcNumber`).siblings(`.invalid-feedback`).text(`Please enter a valid 3 digit CVC number`);
             isCreditCardFormValid = false;
         }
-
     }
 
-    //SECOND VALIDATION METHOD: CHECKING ON FOCUSOUT TO GIVE REAL-TIME FEEDBACK
-
-    //validation for billing/shipping/credit card forms, using these functions to give real-time feedback to the user
-    //first name
+    //focusout function calls for each input field
     $(`#billingFirstName`).on(`focusout`, function() {
-        billingFirstName = this.value; //gets the value
-        if (billingFirstName.match(regFirstName)) { //checks against regex and displays feedback
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid first name (No numbers or spaces)`);
-            isBillingFormValid = false;
-        }
+        billingFirstNameValidate();
     });
 
     //last name
     $(`#billingLastName`).on(`focusout`, function() { //billing last name
-        billingLastName = this.value;
-        if (billingLastName.match(regLastName)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid last name (No numbers or spaces)`);
-            isBillingFormValid = false;
-        }
+        billingLastNameValidate();
     });
 
     //address
     $(`#billingAddress`).on(`focusout`, function() {
-        billingAddress = this.value;
-        if (billingAddress.match(regAddress)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid address (Ex. 1234 Main St)`);
-            isBillingFormValid = false;
-        }
+        billingAddressValidate();
     });
 
     //second address
     $(`#billingSecondAddress`).on(`focusout`, function() {
-        billingSecondAddress = this.value;
-        if (billingSecondAddress.length === 0) {
-            $(this).removeClass(`is-invalid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
-        }
-        else if (billingSecondAddress.match(regSecondAddress)) {
-            $(this).removeClass(`is-valid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid address (Ex. Apt 123)`);
-            isBillingFormValid = false;
-        }
+        billingSecondAddressValidate();
     });
 
     //city
     $(`#billingCity`).on(`focusout`, function() {
-        billingCity = this.value;
-        if (billingCity.match(regCity)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid city (No numbers or special characters)`);
-            isBillingFormValid = false;
-        }
+        billingCityValidate();
     });
 
     //phone
     $(`#billingPhone`).on(`focusout`, function() {
-        billingPhone = this.value;
-        if (billingPhone.match(regPhone)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid phone number (Ex. 123-456-7890 or 123 456 7890)`);
-            isBillingFormValid = false;
-        }
+        billingPhoneValidate();
     });
 
     //email
     $(`#billingEmail`).on(`focusout`, function() {
-        billingEmail = this.value;
-        if (billingEmail.match(regEmail)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid email address (Ex. name@company.com)`);
-            isBillingFormValid = false;
-        }
+        billingEmailValidate(); 
     });
 
     //country
-    $(`#billingCountry`).on(`input`, function() {
-        billingCountry = this.value;
-        if (billingCountry === 'CAD') {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
-        }
-        else if (billingCountry === 'USA') {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            isBillingFormValid = false;
-        }
+    $(`#shippingProvince`).on(`input`, function() {
+        shippingProvinceValidate();
     });
 
     //province
     $(`#billingProvince`).on(`input`, function() {
-        billingProvince = this.value;
-        if (billingProvince === ``) {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            isBillingFormValid = false;
-        }
-        else {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isBillingFormValid = true;
-        }
+        billingProvinceValidate();
     });
 
     //country
     $('#billingCountry').on('change', function() {
-        billingCountry = $(this).val();
-        billingPostalCode = $(`#billingZip`).val();
-        if (billingCountry === `CAD` && billingPostalCode !== ``) { //to prevent message being displayed before user types a postal code in
-            if (billingPostalCode.match(canRegPostal)) {
-                $(`#billingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-                isBillingFormValid = true;
+        billingCountryValidate();
+        billingProvince = $(`#billingZip`).val()
+            if (billingProvince !== ``) {
+                billingPostalValidate(); // validate the postal code if it isn't empty
             } 
-            else {
-                $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-                $(`#billingZip`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
-                isBillingFormValid = false;
-            }
-        }
-        if (billingCountry === 'USA' && billingPostalCode !== ``) {
-            if (billingPostalCode.match(usaRegPostal)) {
-                $(`#billingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-                isBillingFormValid = true;
-            }
-            else {
-                $(`#billingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-                $(`#billingZip`).siblings(`.invalid-feedback`).text(`Country/Zip mismatch`);
-                isBillingFormValid = false;
-            }
-        }
+        
         if (billingCountry === `CAD`) { //display appropriate options based on country selected
             $(`#billingZip`).attr(`placeholder`, `A1A 1A1`);
             $(`#billingProvince`).empty().append(`
@@ -883,166 +1002,52 @@ $(document).ready(function() {
 
     //postal/zip
     $(`#billingZip`).on(`focusout`, function() {
-        billingPostalCode = this.value;
-        billingCountry = $(`#billingCountry`).val();
-        if (billingCountry === `CAD`) { //checking which country was selected and displaying appropriate feedback
-            if (billingPostalCode.match(canRegPostal)) {
-                $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-                isBillingFormValid = true;
-            } else {
-                $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-                $(this).siblings(`.invalid-feedback`).text(`Please enter a valid postal code`);
-                isBillingFormValid = false;
-            }
-            
-        } else if (billingCountry === `USA`) {
-            if (billingPostalCode.match(usaRegPostal)) {
-                $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();  
-                isBillingFormValid = true;            
-            } else {
-                $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-                $(this).siblings(`.invalid-feedback`).text(`Please enter a valid zip code`);
-                isBillingForrmValid = false;
-            }
-        } else if (billingCountry === null) {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(this).siblings(`.invalid-feedback`).text(`Please select a country`);
-            isBillingFormValid = false;
-        } else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid zip code`);
-            isBillingFormValid = false;
-        }
+        billingPostalValidate();
+        billingCountryValidate(); //to make sure both feedback messages get displayed correctly
     });
     
     // SHIPPING (same as billing, nothing different here except variable names)
     //first name
     $(`#shippingFirstName`).on(`focusout`, function() { 
-        shippingFirstName = this.value;
-        if (shippingFirstName.match(regFirstName)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isShippingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid first name (No numbers or spaces)`);
-            isShippingFormValid = false;
-        }
+        shippingFirstNameValidate();
     });
 
     //last name
     $(`#shippingLastName`).on(`focusout`, function() { //billing last name
-        shippingLastName = this.value;
-        if (shippingLastName.match(regLastName)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isShippingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid last name (No numbers or spaces)`);
-            isShippingFormValid = false;
-        }
+        shippingLastNameValidate();
     });
 
     //address
     $(`#shippingAddress`).on(`focusout`, function() {
-        shippingAddress = this.value;
-        if (shippingAddress.match(regAddress)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isShippingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a address (Ex. 1234 Main St)`);
-            isShippingFormValid = false;
-        }
+        shippingAddressValidate();
     });
 
     //second address
     $(`#shippingSecondAddress`).on(`focusout`, function() {
-        shippingSecondAddress = this.value;
-        if (shippingSecondAddress.length === 0) {
-            $(this).removeClass(`is-invalid`).siblings(`.invalid-feedback`).hide();
-            isShippingFormValid = true;
-        }
-        else if (shippingSecondAddress.match(regSecondAddress)) {
-            $(this).removeClass(`is-valid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isShippingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid second address(Ex. Apt 123)`);
-            isShippingFormValid = false;
-        }
+        shippingSecondAddressValidate();
     });
 
     //city
     $(`#shippingCity`).on(`focusout`, function() {
-        shippingCity = this.value;
-        if (shippingCity.match(regCity)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isShippingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid city (Ex. Los Angeles)`);
-            isShippingFormValid = false;
-        }
+        shippingCityValidate();
     });
 
     //phone
     $(`#shippingPhone`).on(`focusout`, function() {
-        shippingPhone = this.value;
-        if (shippingPhone.match(regPhone)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isShippingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(this).siblings(`.invalid-feedback`).text(``);
-            isShippingFormValid = false;
-        }
+        shippingPhoneValidate();
     });
 
     //email
     $(`#shippingEmail`).on(`focusout`, function() {
-        shippingEmail = this.value;
-        if (shippingEmail.match(regEmail)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isShippingFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid email address (Ex. someone@company.com)`);
-            isShippingFormValid = false;
-        }
+        shippingEmailValidate();
     });
 
     //country
     $('#shippingCountry').on('change', function() {
-        shippingCountry = $(this).val();
-        shippingPostalCode = $(`#shippingZip`).val();
-        if (shippingCountry === `CAD` && shippingPostalCode !== ``) { //to prevent message being displayed before user types a postal code in
-            if (shippingPostalCode.match(canRegPostal)) {
-                $(`#shippingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-                isShippingFormValid = true;
-            } 
-            else {
-                $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-                $(`#shippingZip`).siblings(`.invalid-feedback`).text(`Country/Postal mismatch`);
-                isShippingFormValid = false;
-            }
-        }
-        if (shippingCountry === 'USA' && shippingPostalCode !== ``) {
-            if (shippingPostalCode.match(usaRegPostal)) {
-                $(`#shippingZip`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-                isShippingFormValid = true;
-            }
-            else {
-                $(`#shippingZip`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-                $(`#shippingZip`).siblings(`.invalid-feedback`).text(`Country/Zip mismatch`);
-                isShippingFormValid = false;
-            }
+        shippingCountryValidate();
+        shippingProvince = $(`#shippingZip`).val();
+        if (shippingProvince !== ``) {
+            shippingPostalValidate();
         }
         if (shippingCountry === `CAD`) { //display appropriate options based on country selected
             $(`#shippingZip`).attr(`placeholder`, `A1A 1A1`);
@@ -1121,116 +1126,27 @@ $(document).ready(function() {
                 <option value="WY">Wyoming</option>
             `);
         }
-    });
-
-    //postal/zip
+       
+    });    
     $(`#shippingZip`).on(`focusout`, function() {
-        shippingPostalCode = this.value;
-        shippingCountry = $(`#shippingCountry`).val();
-        if (shippingCountry === `CAD`) { //checking which country was selected and displaying appropriate feedback
-            if (shippingPostalCode.match(canRegPostal)) {
-                $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide()
-                $(this).siblings(`.invalid-feedback`).text(`Please enter a valid postal code`);
-                isShippingFormValid = false;
-            } else {
-                $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-                $(this).siblings(`.invalid-feedback`).text(`Please enter a valid postal code`);
-                isShippingFormValid = false;
-            }
-        } else if (shippingCountry === `USA`) {
-            if (shippingPostalCode.match(usaRegPostal)) {
-                $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide()
-                $(this).siblings(`.invalid-feedback`).text(`Please enter a valid zip code`);   
-                isShippingFormValid = false;            
-            } else {
-                $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-                $(this).siblings(`.invalid-feedback`).text(`Please enter a valid zip code`);
-                isShippingFormValid = false;
-            }
-        } else if (shippingCountry === null) {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(this).siblings(`.invalid-feedback`).text(`Please select a country`);
-            isShippingFormValid = false;
-        } else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid zip code`);
-            isShippingFormValid = false;
-        }
+        shippingPostalValidate();
+        shippingCountryValidate();
     });
 
     //credit card form
     $(`#creditCardNumber`).on(`focusout`, function() {
-        billingCcNumber = this.value;
-        if (billingCcNumber.match(ccRegex)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isCreditCardFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(this).siblings(`.invalid-feedback`).text(`Please enter a valid 16 digit credit card number`);
-            isCreditCardFormValid = false;
-        }
-    });
-
-    $(`#expirationMonth`).on(`focusout`, function() {
-        billingCcYear = parseInt($(`#expirationYear`).val());
-        if (billingCcYear < currentYear) {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-            $(this).siblings(`.invalid-feedback`).text(`Cannot be in the past!`);
-            isCreditCardFormValid = false;
-        }
-        if ($(`#expirationYear`).val().match(yearRegex) && (billingCcYear > currentYear || (billingCcYear === currentYear && this.value >= currentMonth))) { //checking the date
-            if (this.value.match(monthRegex) && this.value !== ``) {
-                $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-                $(`#expirationYear`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-                isCreditCardFormValid = true;
-            } 
-            else {
-                $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show()
-                $(this).siblings(`.invalid-feedback`).text(`Cannot be in the past!`);
-                isCreditCardFormValid = false;
-            }
-        } 
-        else {
-            $(this).removeClass(`is-valid`).removeClass(`is-invalid`).siblings(`.invalid-feedback`).hide();
-            isCreditCardFormValid = true;
-        }
+        validateCreditCardNumber();
     });
       
     $(`#expirationYear`).on(`focusout`, function() {
-        billingCcMonth = $(`#expirationMonth`).val();
-        if (((billingCcMonth.match(monthRegex)) && this.value.match(yearRegex)) && ((this.value >= currentYear && billingCcMonth >= currentMonth) || (this.value === currentYear && billingCcMonth === currentMonth +1))) {
-            if (billingCcMonth) {
-                $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-                $(`#expirationMonth`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-                isCreditCardFormValid = true;
-            }
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            $(`#expirationMonth`).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isCreditCardFormValid = true;
-        } 
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(`#expirationMonth`).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            $(`#expirationMonth`).siblings(`.invalid-feedback`).text("Cannot be in the past!");
-            $(this).siblings(`.invalid-feedback`).text("Cannot be in the past!");
-            isCreditCardFormValid = false;
-        }
+        validateCreditExpiry();
     });
 
     $(`#cvcNumber`).on(`focusout`, function() {
-        billingCvc = this.value;
-        if (billingCvc.match(cvcRegex)) {
-            $(this).removeClass(`is-invalid`).addClass(`is-valid`).siblings(`.invalid-feedback`).hide();
-            isCreditCardFormValid = true;
-        }
-        else {
-            $(this).removeClass(`is-valid`).addClass(`is-invalid`).siblings(`.invalid-feedback`).show();
-            isCreditCardFormValid = false;
-        }
+        validateCVC();
     });
 
-    //logic for hiding and showing buttons
+    //logic for tabs for checkout modal
     $(`#pills-payment-tab`).click(function() {
         $(`#submitOrderBtn`).hide();
         $(`#continueBtn`).show();
@@ -1255,4 +1171,3 @@ $(document).ready(function() {
         $(`#backBtn`).show();
     });
 });
-//the end.

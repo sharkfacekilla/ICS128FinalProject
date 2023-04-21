@@ -11,6 +11,7 @@
     --red: #E05263;
     --yellow: #F3B61F;
 }
+
 /* Changing font & hiding scroll bar*/
 body {
     font-family: 'Inter', sans-serif !important;
@@ -26,6 +27,25 @@ body::-webkit-scrollbar {
 .card {
     box-shadow: 9px 12px 10px 5px rgba(0,0,0,0.6);
     background-color: var(--white)!important;
+}
+
+.ratingColour {
+    color: var(--blue);
+}
+
+.text-muted {
+    text-decoration: none!important;
+}
+
+.priceColour {
+    color: var(--green);
+}
+
+.card-img-top {
+    width: 100%;
+    max-height: 23vh;
+    object-fit: contain;
+    mix-blend-mode: multiply;
 }
 
 .gridDisplay {
@@ -56,16 +76,16 @@ body::-webkit-scrollbar {
     color: var(--white)!important;
 }
 
+#missedInfo {
+    color: red;
+    text-align: center;
+}
+
 /* Button Styles */
 .addToCart {
     background-color: var(--purple)!important;
     color: var(--white)!important;
     border-color: var(--white)!important;
-}
-
-#missedInfo {
-    color: red;
-    text-align: center;
 }
 
 #cartBtn {
@@ -85,7 +105,7 @@ body::-webkit-scrollbar {
     border-color: var(--black)!important;
 }
 
-#continueBtn{
+#continueBtn, #closeSuccessMsg{
     background-color: var(--blue)!important;
     color: var(--white)!important;
 }
@@ -101,26 +121,8 @@ body::-webkit-scrollbar {
     color: var(--white)!important;
 }
 
-/* Card Styles */
-.ratingColour {
-    color: var(--blue);
-}
 
-.priceColour {
-    color: var(--green);
-}
-
-.card-img-top {
-    width: 100%;
-    max-height: 23vh;
-    object-fit: contain;
-    mix-blend-mode: multiply;
-}
-
-#storeFooter {
-    background-color: var(--black);
-}
-
+/* landing section styles */
 #landingContainer {
     position: relative;
     z-index: 1;
@@ -155,7 +157,7 @@ body::-webkit-scrollbar {
     backdrop-filter: blur(10px);
 }
 
-/* Moves the badge slightly where I think it looks best */
+/* Moves the cart counter badge slightly where I think it looks best */
 #cartCount {
     top: 5px!important;
 }
@@ -196,6 +198,10 @@ section#accessories {
 section#electronics {
     min-height: 100vh;
     background-color: var(--grey);
+}
+
+section#storeFooter {
+    background-color: var(--black);
 }
 
 /* Styles for the item popup */
@@ -239,5 +245,3 @@ section#electronics {
     }
 
 }
-
-

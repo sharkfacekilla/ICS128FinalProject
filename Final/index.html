@@ -204,12 +204,12 @@
                             <form class="row g-3 needs-validation" id="billingForm" novalidate>
                                 <div class="col-md-6">
                                     <label for="billingFirstName" class="form-label mb-0">First Name</label>
-                                    <input type="text" class="form-control" id="billingFirstName" required>
+                                    <input type="text" class="form-control" id="billingFirstName" placeholder="Some">
                                     <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="billingLastName" class="form-label mb-0">Last Name</label>
-                                    <input type="text" class="form-control" id="billingLastName">
+                                    <input type="text" class="form-control" id="billingLastName" placeholder="Guy">
                                     <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="col-12">
@@ -219,7 +219,8 @@
                                 </div>
                                 <div class="col-12">
                                     <label for="billingSecondAddress" class="form-label">Billing Address 2</label>
-                                    <input type="text" class="form-control" id="billingSecondAddress" placeholder="Apartment, studio, floor...(Optional)">
+                                    <input type="text" class="form-control" id="billingSecondAddress" placeholder="Apartment 123, studio 456, floor 7...(Optional)">
+                                    <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="billingCountry" class="form-label">Country</label>
@@ -266,17 +267,16 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="sameInfo">
                                 <label class="form-check-label" for="sameInfo">Same as Billing Information</label>
-                                <div class="invalid-feedback"></div>
                             </div>
                             <form class="row g-3" id="shippingForm">
                                 <div class="col-md-6">
                                     <label for="shippingFirstName" class="form-label mb-0">First Name</label>
-                                    <input type="text" class="form-control" id="shippingFirstName">
+                                    <input type="text" class="form-control" id="shippingFirstName" placeholder="Some">
                                     <div class="invalid-feedback"></div>
                                 </div>
                                     <div class="col-md-6">
                                     <label for="shippingLastName" class="form-label mb-0">Last Name</label>
-                                    <input type="text" class="form-control" id="shippingLastName">
+                                    <input type="text" class="form-control" id="shippingLastName" placeholder="Guy">
                                     <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="col-12">
@@ -286,7 +286,7 @@
                                 </div>
                                 <div class="col-12">
                                     <label for="shippingSecondAddress" class="form-label">Billing Address 2</label>
-                                    <input type="text" class="form-control" id="shippingSecondAddress" placeholder="Apartment, studio, or floor">
+                                    <input type="text" class="form-control" id="shippingSecondAddress" placeholder="Apartment 123, studio 456, floor 7...(Optional)">
                                 </div>
                                 <div class="col-md-6">
                                     <label for="shippingCountry" class="form-label">Country</label>
@@ -332,30 +332,27 @@
                             <form class="row g-3" id="paymentForm">
                                 <div class="col-12">
                                     <label for="creditCardNumber" class="form-label">Credit Card Number</label>
-                                    <input type="text" class="form-control" id="creditCardNumber" placeholder="4444 1111 1111 1111">
+                                    <input type="text" class="form-control" id="creditCardNumber" placeholder="4111 1111 1111 1111">
                                     <div class="invalid-feedback">
-                                        Invalid Number (Must be 16 digits and either 4444 1111 1111 1111 or 4444111111111111)
+                                        Invalid Number (Must be 16 digits and either 4111 1111 1111 1111 or 4111111111111111)
                                     </div>
                                 </div>
                                 <div class="col-4">
                                     <label for="expirationMonth" class="form-label">Expiration Month</label>
                                     <input type="text" class="form-control" id="expirationMonth" placeholder="MM">
                                     <div class="invalid-feedback">
-                                        Please enter a valid month.
                                     </div>
                                 </div>
                                 <div class="col-4">
                                     <label for="expirationYear" class="form-label">Expiration Year</label>
                                     <input type="text" class="form-control" id="expirationYear" placeholder="YYYY">
                                     <div class="invalid-feedback">
-                                        Please enter a valid year.
                                     </div>
                                 </div>
                                 <div class="col-2">
                                     <label for="cvcNumber" class="form-label">CVC</label>
                                     <input type="text" class="form-control" id="cvcNumber" placeholder="123">
                                     <div class="invalid-feedback">
-                                        Please enter a valid CVC Number.
                                     </div>
                                 </div>
                             </form>
@@ -374,6 +371,7 @@
                                     <tbody id="checkoutTable"></tbody>
                                     <tfoot id ="checkoutFooter"></tfoot>
                                 </table>
+                                <p class="small"><a href="#!" class="text-muted">Shipping is flat $15. <br>Taxes calculated depending on shipping address within Canada.<br>Taxes shipping to USA is 16%.</a></p>
                             </div>
                         </div>
                     </div>
@@ -391,7 +389,7 @@
     </div>
 <!-- Success Modal -->
     <div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered ">
             <div class="modal-content">
                 <div class="modal-header">
                     <h2 class="modal-title fs-5">Success!</h2>
@@ -401,7 +399,7 @@
                     Your order was placed successfully! Thank you for shopping with us!
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" id="closeSuccessMsg" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
